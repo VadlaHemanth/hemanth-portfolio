@@ -107,6 +107,11 @@ a 720p efficient tier and a 1080p high-detail tier. Both retain all 480 frames a
 24 fps. Every file is below the Pages 25 MiB limit; no segmented byte download is
 needed for the current version.
 
+The desktop high tier uses CRF 21 with two B-frames, preserving more detail at
+about the same transfer size as the earlier CRF 22 encode. Capable short laptop
+viewports prefer Full HD even when their visible browser height is below 720 px.
+Constrained-device and slow-connection alternatives remain available.
+
 Display size/DPR, connection hints and device capacity select the useful raster.
 MediaCapabilities is consulted when available, with a bounded timeout and static
 fallback if neither file can be decoded smoothly. Decoder reports are hints,
@@ -118,12 +123,16 @@ Mobile stage dimensions are kept stable across browser-toolbar height changes.
 Orientation changes and native fullscreen preserve the relative story position.
 Fullscreen is shown only when the browser supports the document Fullscreen API.
 
-The explicit Explore CTA guides the native scroll for roughly 26–29 seconds,
+The explicit Explore CTA guides the native scroll for roughly 25–27 seconds,
 starting immediately at a steady scroll rate. The separate source-time curve
 compensates for the film's uneven movement. It was calibrated offline from
-smoothed optical flow with bounds, including matched eye-entry/return duration.
+smoothed optical flow with bounds. Eye entry and exit are slightly quicker, with
+roughly three seconds of reading room at the projects. A symmetric camera zoom
+in and out keeps that section moving rather than adding a stationary hold.
 During that explicit guided visit, native video playback follows the curve with
 a bounded changing playback rate instead of forcing a new seek on every RAF.
+The slow project window uses precise source frames so the decoder clock cannot
+rush past the names; the zoom camera continues moving through that interval.
 Manual scrolling returns to precise seek-based control immediately.
 Wheel/touch/pointer/navigation-key input cancels it immediately. It is not a
 wheel-event override or scroll lock.

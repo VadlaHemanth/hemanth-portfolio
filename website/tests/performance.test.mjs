@@ -16,7 +16,7 @@ const mediaFiles=variant=>variant.parts?.length?variant.parts:[variant];
 // Quality is the contract. Parts satisfy the host's file limit; they are not
 // lower-resolution renditions, nor a way to reduce Lighthouse's measured bytes.
 test('each family has sharp efficient and high-detail deliveries within the host limit', async () => {
-  assert.equal(manifest.version,5);
+  assert.equal(manifest.version,6);
   assert.equal(manifest.duration,20);
   assert.equal(manifest.fps,24);
   assert.deepEqual(manifest.families.map(family=>family.id).sort(), ['phone','tablet','tablet-portrait','wide']);
@@ -37,7 +37,7 @@ test('each family has sharp efficient and high-detail deliveries within the host
       assert.match(variant.sha256,/^[a-f0-9]{64}$/);
       let total=0;
       for(const part of mediaFiles(variant)) {
-        assert.match(part.src,new RegExp(`^assets/motion/${family.id}-v5-${variant.quality}-${variant.width}x${variant.height}-[a-f0-9]{8,64}\\.mp4$`));
+        assert.match(part.src,new RegExp(`^assets/motion/${family.id}-v[56]-${variant.quality}-${variant.width}x${variant.height}-[a-f0-9]{8,64}\\.mp4$`));
         assert(!paths.has(part.src),`${part.src}: parts cannot alias other families or indices`);
         paths.add(part.src);
         assert.match(part.sha256,/^[a-f0-9]{64}$/);
@@ -58,7 +58,7 @@ test('real shipped variants adapt to display needs and constrained devices', () 
     const ratio=family.aspect[0]/family.aspect[1], fitted=Math.min(width,height*ratio);
     for (const [connection,device] of [
       [{saveData:true},{}], [{effectiveType:'2g'},{}], [{effectiveType:'3g'},{}],
-      [{downlink:1.6},{}], [{},{memory:2}], [{},{cores:2}],
+      [{downlink:1},{}], [{},{memory:2}], [{},{cores:2}],
     ]) {
       const selected=chooseMotionVariant(family.variants,fitted,fitted/ratio,3,connection,'auto',device);
       assert.equal(selected.quality,'balanced',`${family.id}: efficient high-quality tier on constrained devices`);

@@ -3,8 +3,8 @@
  * interception, looping player or forced playback timer. Loading reports bytes,
  * not invented progress. Reduced motion and direct links skip the film.
  */
-import {initProjectScreens,useCoverFrame} from './project-screens.js?v=20261004-2';
-import {MOTION_POINTS,SHOWCASE_RANGE} from './motion-curve.js?v=20261004-2';
+import {initProjectScreens,useCoverFrame} from './project-screens.js?v=20261004-3';
+import {MOTION_POINTS,SHOWCASE_RANGE} from './motion-curve.js?v=20261004-3';
 const browser = typeof window !== 'undefined';
 const systemMotion = browser ? window.matchMedia('(prefers-reduced-motion: reduce)') : {matches:false};
 const LAST_FRAME = 479/24;
@@ -37,8 +37,8 @@ export function showcaseCamera(progress,width,height,family='wide',headerHeight=
   const top=(height-fittedHeight)/2+(topEdge[family]||.055)*fittedHeight;
   const zoomedTop=(top-height*.35)*(1+maxZoom)+height*.35;
   const lift=Math.max(0,headerHeight+16-zoomedTop);
-  const {start,landed,leave,end}=SHOWCASE_RANGE;
-  const liftFocus=ease((progress-(start-.025))/(landed-start+.025))*(1-ease((progress-leave)/(end-leave)));
+  const {liftStart,landed,end,liftEnd}=SHOWCASE_RANGE;
+  const liftFocus=ease((progress-liftStart)/(landed-liftStart))*(1-ease((progress-end)/(liftEnd-end)));
   return {scale:1+maxZoom*focus,lift:lift*liftFocus};
 }
 
@@ -66,14 +66,17 @@ export function chooseMotionVariant(variants,width,height,dpr=1,connection={},qu
   const list=scrubs.length?scrubs:mp4;
   const allowed=list.filter(v=>Math.min(v.width,v.height)<=1080);
   const choices=allowed.length?allowed:[list[0]];
+  const desktop=height<=width&&(device.portable===false||(width>=1000&&device.portable!==true));
   const limited=(device.memory>0&&device.memory<=2)||(device.cores>0&&device.cores<=2)
     ||(device.memory>0&&device.memory<=4&&device.cores>0&&device.cores<=4);
   const constrained=connection.saveData||['2g','slow-2g','3g'].includes(connection.effectiveType)
-    ||(Number(connection.downlink)>0&&connection.downlink<3);
+    ||(Number(connection.downlink)>0&&connection.downlink<=(desktop?1:3));
   // The efficient option remains a high-quality 720p encode, not the previous
   // 270p fallback. No user-agent guessing or external fingerprinting.
   if(limited||constrained)return choices[0];
-  const need=Math.min(width,height)*Math.min(2,Math.max(1,dpr));
+  // A short laptop viewport must not choose the 720p tier merely because the
+  // browser toolbar consumes height. Keep constrained-device fallbacks above.
+  const need=Math.max(desktop?1080:0,Math.min(width,height)*Math.min(2,Math.max(1,dpr)));
   return choices.find(v=>Math.min(v.width,v.height)>=need)||choices.at(-1);
 }
 
@@ -102,7 +105,7 @@ export function scrollProgress(scrollY,top,height,viewportHeight) {
   return Math.min(1,Math.max(0,(scrollY-top)/Math.max(1,height-viewportHeight)));
 }
 export function guidedScrollDuration(distance,viewportHeight) {
-  return clamp(Math.abs(distance)/Math.max(1,viewportHeight)*3000,5000,30000);
+  return clamp(Math.abs(distance)/Math.max(1,viewportHeight)*2850,5000,28500);
 }
 export function guidedScrollPosition(start,end,progress) {
   // Responsive from the first frame; equalization belongs to the media curve.
@@ -150,13 +153,13 @@ export function initMotion() {
   const coarse=window.matchMedia('(pointer:coarse)');
   let framedViewport=null;
   let fullscreenAnchor=null;
-  let guideHandle=0,guideRequest=0,guideNative=false,guideProgressPerSecond=0,videoFrameHandle=0;
+  let guideHandle=0,guideRequest=0,guideNative=false,guideProgressPerSecond=0,videoFrameHandle=0,showcasePrecision=false;
 
   function cancelGuide() {
     guideRequest++;
     if(guideHandle)cancelAnimationFrame(guideHandle);
     guideHandle=0;
-    guideNative=false;guideProgressPerSecond=0;
+    guideNative=false;guideProgressPerSecond=0;showcasePrecision=false;
     video.pause();video.playbackRate=1;
     if(videoFrameHandle&&video.cancelVideoFrameCallback)video.cancelVideoFrameCallback(videoFrameHandle);
     videoFrameHandle=0;
@@ -333,12 +336,22 @@ export function initMotion() {
     stage.style.setProperty('--scene-scale',String(view.scale));
     stage.style.setProperty('--scene-lift',`${view.lift}px`);
     const wanted=Math.min(LAST_FRAME,Math.round(displayTime*24)/24);
+    const preciseShowcase=guideNative&&displayTime>=14.5&&displayTime<=15.85;
     if(guideNative) {
       const rate=guidedMediaRate(displayProgress,guideProgressPerSecond);
       if(Math.abs(video.playbackRate-rate)>.025)video.playbackRate=rate;
+      // At the slow project reveal the native decoder's clock can otherwise
+      // run through the reading window before the scroll camera catches up.
+      // Seek the few changing source frames precisely while the independent
+      // camera keeps animating continuously; resume playback for the return.
+      if(preciseShowcase&&!showcasePrecision){showcasePrecision=true;video.pause();}
+      else if(!preciseShowcase&&showcasePrecision){
+        showcasePrecision=false;
+        Promise.resolve(video.play()).catch(()=>{guideNative=false;});
+      }
       if(!video.requestVideoFrameCallback)presentedTime=video.currentTime;
     }
-    if(!seekPending&&Math.abs(video.currentTime-wanted)>=(guideNative ? .45 : 1/48)) {
+    if(!seekPending&&Math.abs(video.currentTime-wanted)>=(guideNative&&!preciseShowcase ? .45 : 1/48)) {
       seekPending=true;video.currentTime=Math.min(LAST_FRAME,wanted);stats.seeks++;
     }
     stats.maxLag=Math.max(stats.maxLag,Math.abs(video.currentTime-targetTime));

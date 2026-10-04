@@ -61,7 +61,9 @@ export function initProjectScreens(stage,camera=stage) {
     const row=data?.families[family],quads=row?.frames[String(frame)];
     if(!quads){layer.hidden=true;heading.hidden=true;nodes.forEach(n=>n.tabIndex=-1);return false;}
     resize(row.aspect,useCoverFrame(stage.clientWidth,stage.clientHeight,family));layer.hidden=false;heading.hidden=false;
-    const alpha=Math.min(1,Math.max(0,(time-15.02)/.12),Math.max(0,(15.625-time)/.08));
+    // Keep most of the longer breathing interval fully readable; the camera,
+    // rather than a long text fade, supplies the movement through these frames.
+    const alpha=Math.min(1,Math.max(0,(time-15.02)/.06),Math.max(0,(15.625-time)/.06));
     layer.style.opacity=String(alpha);heading.style.opacity=String(alpha);
     for(let i=0;i<3;i++){
       const q=quads[i],center=[q.reduce((s,p)=>s+p[0],0)/4,q.reduce((s,p)=>s+p[1],0)/4];

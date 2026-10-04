@@ -69,16 +69,19 @@ test('independently decodable scrub movie is selected for background', () => {
   assert.equal(chooseMotionVariant(withScrub,1280,720,2,{},'max').quality,'max');
 });
 
-test('measured speed curve starts promptly, stays ordered and balances eye entry/return', () => {
+test('eye passes are quicker while the moving project reveal has readable breathing room', () => {
   for(const [p,t] of SCROLL_BEATS)assert.ok(Math.abs(progressTime(p)-t)<1e-8);
   const times=Array.from({length:1001},(_,i)=>progressTime(i/1000));
   assert.ok(times.every((t,i)=>i===0||t>times[i-1]));
   assert.ok(progressTime(.04)>1);
   const atFrame=frame=>SCROLL_BEATS.find(([,time])=>Math.abs(time-frame/24)<1e-8)?.[0];
   const entry=atFrame(96)-atFrame(22),exit=atFrame(471)-atFrame(432);
-  assert.ok(Math.abs(entry-exit)<.012);
+  assert.ok(entry*27>=4.2&&entry*27<=4.5,'entry shortened from the earlier 5.2 seconds');
+  assert.ok(exit*27>=3.8&&exit*27<=4.15,'return is slightly brisker than entry');
+  assert.ok(exit<entry);
   assert.ok(atFrame(22)<.015,'near-static source opening is not stretched');
-  assert.ok(atFrame(374)-atFrame(360)<.06,'no multi-screen-length stationary showcase');
+  const reading=(atFrame(374)-atFrame(361))*27;
+  assert.ok(reading>=2.8&&reading<=3.5,'readable project names without a repeated stationary page');
   assert.ok(progressTime(.64)>progressTime(.61));
   assert.ok(progressTime(.67)>progressTime(.64));
 });
@@ -89,6 +92,12 @@ test('project camera stays aligned with the retimed showcase, then withdraws onc
   assert.ok(showcaseFocus((start+peak)/2)>0);
   assert.ok(showcaseFocus(peak)>showcaseFocus((start+peak)/2));
   assert.ok(showcaseFocus((leave+end)/2)<showcaseFocus(peak));
+  assert.equal(peak,leave,'no flat camera hold while scrolling');
+  for(const fraction of [.15,.35,.65,.85]){
+    const forward=showcaseFocus(start+(peak-start)*fraction);
+    const backward=showcaseFocus(end-(end-peak)*fraction);
+    assert.ok(Math.abs(forward-backward)<.00001,'matching zoom-in and zoom-out pace');
+  }
   assert.equal(showcaseFocus(.8),0);
   for(let i=0;i<=1000;i++)assert.ok(showcaseFocus(i/1000)>=0&&showcaseFocus(i/1000)<=1);
 });
@@ -113,11 +122,21 @@ test('showcase camera reserves navigation clearance across authored aspect ratio
 test('high-quality efficient media is selected on slow networks and limited devices', () => {
   const scrubs=variants.slice(1,3).map(v=>({...v,scrub:true}));
   assert.equal(chooseMotionVariant(scrubs,1920,1080,2,{effectiveType:'3g'}).quality,'balanced');
-  assert.equal(chooseMotionVariant(scrubs,1920,1080,2,{downlink:1.2}).quality,'balanced');
+  assert.equal(chooseMotionVariant(scrubs,1920,1080,2,{downlink:.8}).quality,'balanced');
   assert.equal(chooseMotionVariant(scrubs,1920,1080,2,{},'auto',{memory:2}).quality,'balanced');
   assert.equal(chooseMotionVariant(scrubs,1920,1080,2,{},'auto',{cores:2}).quality,'balanced');
   assert.equal(chooseMotionVariant(scrubs,1920,1080,2,{},'auto',{memory:4,cores:4}).quality,'balanced');
   assert.equal(chooseMotionVariant(scrubs,1920,1080,2,{downlink:20},'auto',{memory:8,cores:8}).quality,'high');
+});
+
+test('short laptop viewports still choose Full HD when the device can handle it', () => {
+  const candidates=variants.slice(1,3);
+  for(const [width,height] of [[1280,650],[1366,600],[1440,720],[1920,700]]) {
+    assert.equal(chooseMotionVariant(candidates,width,height,1,{downlink:10},'auto',{memory:8,cores:8,portable:false}).quality,'high');
+  }
+  assert.equal(chooseMotionVariant(candidates,1066,600,1,{downlink:1.6,effectiveType:'4g'},'auto',{memory:8,cores:8,portable:false}).quality,'high','a coarse 4G estimate should not needlessly soften desktop video');
+  assert.equal(chooseMotionVariant(candidates,1366,600,1,{downlink:.8},'auto',{memory:8,cores:8,portable:false}).quality,'balanced');
+  assert.equal(chooseMotionVariant(candidates,1024,700,1,{},'auto',{portable:true}).quality,'balanced');
 });
 
 test('loading deadline follows transfer size and network speed, but is bounded', () => {

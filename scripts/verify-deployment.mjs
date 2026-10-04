@@ -48,7 +48,7 @@ const verifyMedia=args['verify-media']===true || args['verify-media']==='true';
 const MiB=1024*1024;
 const report={
   checkedAt:new Date().toISOString(),url:base.href,expectedRevision:revision,previousRevision:previous,
-  method:'Normal public GET with revalidation; application bytes compared to explicit Git blobs. Active v5 movie headers/range checked; optional sequential full-file SHA-256 verification. No deployment mutation.',
+  method:'Normal public GET with revalidation; application bytes compared to explicit Git blobs. Active movie headers/range checked; optional sequential full-file SHA-256 verification. No deployment mutation.',
   mediaByteIntegrity:verifyMedia?'pending':'not_checked',
   files:[],media:[],mediaAggregates:[],privatePaths:[],checks:[],errors:[],
 };
@@ -148,7 +148,7 @@ try {
   }
   if(previous)check('new-revision content evidence',changedFilesVerified>0,`${changedFilesVerified} changed public files match the new commit`);
   const manifest=JSON.parse(git('show',`${revision}:website/assets/motion/manifest.json`).toString());
-  check('adaptive high-quality manifest',manifest.version===5 && manifest.families.length===4
+  check('adaptive high-quality manifest',manifest.version===6 && manifest.families.length===4
     && manifest.families.every(family=>family.variants.length===2
       && family.variants.some(v=>v.quality==='high')&&family.variants.some(v=>v.quality==='balanced')),
   `version ${manifest.version}; efficient and high-detail choices for each device family`);

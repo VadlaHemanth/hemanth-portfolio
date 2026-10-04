@@ -1,6 +1,6 @@
 {
-  "version": 5,
-  "status": "adaptive 720p/1080p closed-GOP delivery",
+  "version": 6,
+  "status": "adaptive delivery with refined desktop detail and a readable moving showcase",
   "duration": 20,
   "fps": 24,
   "families": [
@@ -27,16 +27,17 @@
         },
         {
           "quality": "high",
-          "src": "assets/motion/wide-v5-high-1920x1080-978d5408066f.mp4",
+          "src": "assets/motion/wide-v6-high-1920x1080-81518e97d88e.mp4",
           "type": "video/mp4",
           "width": 1920,
           "height": 1080,
-          "sizeBytes": 24352312,
-          "sha256": "978d5408066f62912805a60daa29e052ce3d69cea3fda6b5a478c1b1b6e11c6f",
+          "sizeBytes": 25180717,
+          "sha256": "81518e97d88ec31c2cc719830f14e252a684f7aefdd42d52316dc4f6352ef3e2",
           "scrub": true,
           "keyframeInterval": 24,
           "fps": 24,
-          "codec": "avc1.640028"
+          "codec": "avc1.640028",
+          "bFrames": 2
         }
       ]
     },
