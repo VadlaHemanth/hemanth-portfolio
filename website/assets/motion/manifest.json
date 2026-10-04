@@ -1,6 +1,6 @@
 {
   "version": 5,
-  "status": "complete eight-variant candidate: balanced/high closed-GOP AVC; browser QA and integration owned by main",
+  "status": "adaptive 720p/1080p closed-GOP delivery",
   "duration": 20,
   "fps": 24,
   "families": [
@@ -176,5 +176,6 @@
       "id": "return"
     }
   ],
-  "experience": "native_scroll_background"
+  "experience": "native_scroll_background",
+  "loadingPolicy": "display-and-decoder-aware"
 }

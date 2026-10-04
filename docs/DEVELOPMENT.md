@@ -122,6 +122,9 @@ The explicit Explore CTA guides the native scroll for roughly 26–29 seconds,
 starting immediately at a steady scroll rate. The separate source-time curve
 compensates for the film's uneven movement. It was calibrated offline from
 smoothed optical flow with bounds, including matched eye-entry/return duration.
+During that explicit guided visit, native video playback follows the curve with
+a bounded changing playback rate instead of forcing a new seek on every RAF.
+Manual scrolling returns to precise seek-based control immediately.
 Wheel/touch/pointer/navigation-key input cancels it immediately. It is not a
 wheel-event override or scroll lock.
 

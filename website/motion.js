@@ -3,8 +3,8 @@
  * interception, looping player or forced playback timer. Loading reports bytes,
  * not invented progress. Reduced motion and direct links skip the film.
  */
-import {initProjectScreens,useCoverFrame} from './project-screens.js?v=20261004-1';
-import {MOTION_POINTS,SHOWCASE_RANGE} from './motion-curve.js?v=20261004-1';
+import {initProjectScreens,useCoverFrame} from './project-screens.js?v=20261004-2';
+import {MOTION_POINTS,SHOWCASE_RANGE} from './motion-curve.js?v=20261004-2';
 const browser = typeof window !== 'undefined';
 const systemMotion = browser ? window.matchMedia('(prefers-reduced-motion: reduce)') : {matches:false};
 const LAST_FRAME = 479/24;
@@ -108,6 +108,10 @@ export function guidedScrollPosition(start,end,progress) {
   // Responsive from the first frame; equalization belongs to the media curve.
   return start+(end-start)*clamp(progress);
 }
+export function guidedMediaRate(progress,progressPerSecond) {
+  const left=clamp(progress-.0005),right=clamp(progress+.0005);
+  return clamp((progressTime(right)-progressTime(left))/Math.max(.000001,right-left)*progressPerSecond,.125,4);
+}
 export function progressTime(progress) {
   const p=Math.min(1,Math.max(0,progress)),a=SCROLL_BEATS;
   if(p===1)return LAST_FRAME;
@@ -146,12 +150,21 @@ export function initMotion() {
   const coarse=window.matchMedia('(pointer:coarse)');
   let framedViewport=null;
   let fullscreenAnchor=null;
-  let guideHandle=0,guideRequest=0;
+  let guideHandle=0,guideRequest=0,guideNative=false,guideProgressPerSecond=0,videoFrameHandle=0;
 
   function cancelGuide() {
     guideRequest++;
     if(guideHandle)cancelAnimationFrame(guideHandle);
     guideHandle=0;
+    guideNative=false;guideProgressPerSecond=0;
+    video.pause();video.playbackRate=1;
+    if(videoFrameHandle&&video.cancelVideoFrameCallback)video.cancelVideoFrameCallback(videoFrameHandle);
+    videoFrameHandle=0;
+  }
+  function trackPresentedFrame(now,metadata) {
+    videoFrameHandle=0;if(!guideNative||!ready)return;
+    presentedTime=metadata.mediaTime;updateCopy(presentedTime);
+    videoFrameHandle=video.requestVideoFrameCallback(trackPresentedFrame);
   }
   function guideToWork() {
     cancelGuide();
@@ -160,13 +173,21 @@ export function initMotion() {
     const startY=scrollY,endY=work.getBoundingClientRect().top+scrollY-headerHeight-20;
     if(endY<=startY)return;
     const duration=guidedScrollDuration(endY-startY,stageHeight);
+    guideProgressPerSecond=(endY-startY)/Math.max(1,layoutHeight-stageHeight)/(duration/1000);
+    // During the explicit guided visit, use the decoder's continuous playback
+    // instead of flushing it with a seek on every animation frame.
+    guideNative=true;
+    video.playbackRate=guidedMediaRate(scrollProgress(scrollY,layoutTop,layoutHeight,stageHeight),guideProgressPerSecond);
+    Promise.resolve(video.play()).catch(()=>{guideNative=false;});
+    if(video.requestVideoFrameCallback)videoFrameHandle=video.requestVideoFrameCallback(trackPresentedFrame);
     let began=null;
     function advance(now) {
       if(document.hidden||reduced()){cancelGuide();return;}
       began ??= now;
       const p=clamp((now-began)/duration);
       window.scrollTo({top:guidedScrollPosition(startY,endY,p),behavior:'instant'});
-      guideHandle=p<1?requestAnimationFrame(advance):0;
+      if(p<1)guideHandle=requestAnimationFrame(advance);
+      else {cancelGuide();requestTick();}
     }
     guideHandle=requestAnimationFrame(advance);
   }
@@ -312,7 +333,12 @@ export function initMotion() {
     stage.style.setProperty('--scene-scale',String(view.scale));
     stage.style.setProperty('--scene-lift',`${view.lift}px`);
     const wanted=Math.min(LAST_FRAME,Math.round(displayTime*24)/24);
-    if(!seekPending&&Math.abs(video.currentTime-wanted)>=1/48) {
+    if(guideNative) {
+      const rate=guidedMediaRate(displayProgress,guideProgressPerSecond);
+      if(Math.abs(video.playbackRate-rate)>.025)video.playbackRate=rate;
+      if(!video.requestVideoFrameCallback)presentedTime=video.currentTime;
+    }
+    if(!seekPending&&Math.abs(video.currentTime-wanted)>=(guideNative ? .45 : 1/48)) {
       seekPending=true;video.currentTime=Math.min(LAST_FRAME,wanted);stats.seeks++;
     }
     stats.maxLag=Math.max(stats.maxLag,Math.abs(video.currentTime-targetTime));

@@ -9,7 +9,7 @@
  * Compares public response bytes with committed public files, not the mutable
  * working tree. Does not build, commit, push, deploy, log in, or change DNS.
  * Report stays in ignored maintenance/performance, outside the public build.
- * --verify-media downloads and hashes every active binary part sequentially.
+ * --verify-media downloads and hashes every active movie sequentially.
  * Without that opt-in, media byte integrity is explicitly "not_checked".
  */
 import assert from 'node:assert/strict';
@@ -48,7 +48,7 @@ const verifyMedia=args['verify-media']===true || args['verify-media']==='true';
 const MiB=1024*1024;
 const report={
   checkedAt:new Date().toISOString(),url:base.href,expectedRevision:revision,previousRevision:previous,
-  method:'Normal public GET with revalidation; application bytes compared to explicit Git blobs. Active v4 binary-part headers/range checked; optional sequential full-part and ordered aggregate hashing. No deployment mutation.',
+  method:'Normal public GET with revalidation; application bytes compared to explicit Git blobs. Active v5 movie headers/range checked; optional sequential full-file SHA-256 verification. No deployment mutation.',
   mediaByteIntegrity:verifyMedia?'pending':'not_checked',
   files:[],media:[],mediaAggregates:[],privatePaths:[],checks:[],errors:[],
 };

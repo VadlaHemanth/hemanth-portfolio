@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chooseMotionFamily, chooseMotionVariant, chooseCapableVariant, scrollProgress, progressTime, smoothTime, SCROLL_BEATS, showcaseFocus, showcaseCamera, loadingBudget, shouldReframe, guidedScrollDuration, guidedScrollPosition } from '../motion.js';
+import { chooseMotionFamily, chooseMotionVariant, chooseCapableVariant, scrollProgress, progressTime, smoothTime, SCROLL_BEATS, showcaseFocus, showcaseCamera, loadingBudget, shouldReframe, guidedScrollDuration, guidedScrollPosition, guidedMediaRate } from '../motion.js';
 import {SHOWCASE_RANGE} from '../motion-curve.js';
 import {planeMatrix, SCREEN_PROJECTS} from '../project-screens.js';
 
@@ -155,6 +155,15 @@ test('decoder capabilities can select a smooth alternative before downloading',a
   assert.equal(calls.length,2);
   assert.equal((await chooseCapableVariant(candidates,1920,1080,2,{},{},{decodingInfo:async()=>{throw new Error('unavailable');}})).quality,'high');
   assert.equal(await chooseCapableVariant(candidates,1920,1080,2,{},{},{decodingInfo:async()=>({supported:false,smooth:false})}),null);
+});
+
+test('guided native playback follows the calibrated curve at bounded supported rates',()=>{
+  for(let i=0;i<=1000;i++){
+    const rate=guidedMediaRate(i/1000,1/27);
+    assert.ok(Number.isFinite(rate)&&rate>=.125&&rate<=4);
+  }
+  assert.ok(guidedMediaRate(.03,1/27)>0);
+  assert.ok(guidedMediaRate(.9,1/27)<guidedMediaRate(.01,1/27),'native eye return remains deliberate');
 });
 
 test('project card homography maps all corners to the real plane', () => {
