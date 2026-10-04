@@ -23,3 +23,7 @@ jobs:
           npm test
       - name: Validate public deployment boundary
         run: node scripts/build-site.mjs
+      - name: Portable portfolio workflow helper checks
+        run: |
+          node --test skills/signature-scroll-portfolio/scripts/motion-map.test.mjs
+          python3 -B -m unittest discover -s skills/signature-scroll-portfolio/scripts -p 'test_*.py'

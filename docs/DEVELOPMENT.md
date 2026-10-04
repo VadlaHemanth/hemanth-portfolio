@@ -9,6 +9,8 @@ runtime framework dependencies.
 - `website/` — website, résumé, content, responsive web movies and tests.
 - `design/` — reproducible résumé and social-preview builders.
 - `scripts/` — public-site build and deployment checks.
+- `skills/signature-scroll-portfolio/` — reusable personal-portfolio workflow,
+  intake prompt, production references and portable helpers; not a website runtime dependency.
 
 ## Local preview
 
@@ -26,6 +28,16 @@ cd website
 npm run check
 npm test
 ```
+
+The reusable skill has independent, dependency-free helper tests:
+
+```bash
+node --test skills/signature-scroll-portfolio/scripts/motion-map.test.mjs
+python3 -B -m unittest discover -s skills/signature-scroll-portfolio/scripts -p 'test_*.py'
+```
+
+Run these from the repository root. The optional media-inspection command also
+requires `ffprobe`; see the skill README. CI runs both the website and helper tests.
 
 ## Repository boundaries
 
@@ -95,6 +107,9 @@ The shipped one-page PDF and accessible HTML are ready to deploy. The build
 fails rather than shrinking text silently if the résumé no longer fits.
 
 ## Motion
+
+The site is intentionally sound-free. A local sound experiment was declined
+before publication; no audio module, audio toggle or background soundtrack ships.
 
 There is no wheel/touch interception. Scroll is native, with a sticky story and
 ordinary sections below. The project scene progresses with a small camera move;

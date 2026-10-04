@@ -102,6 +102,14 @@ class StaticChecks(unittest.TestCase):
         self.assertEqual(self.ids["fullscreen-toggle"][1]["aria-pressed"], "false")
         self.assertIn("fullscreen-status", self.ids)
 
+    def test_experience_is_intentionally_sound_free(self):
+        self.assertNotIn("sound-toggle", self.ids)
+        self.assertNotIn("sound-status", self.ids)
+        self.assertFalse((ROOT / "sound.js").exists())
+        self.assertFalse(any(tag == "audio" for tag, _ in self.nodes))
+        self.assertIn("muted", self.ids["intro-video"][1])
+        self.assertIn("No sound needed.", self.html)
+
     def test_public_links_are_allowlisted(self):
         allowlist = {
             "./resume.html",

@@ -77,5 +77,20 @@ where software can help.
 
 ---
 
+## Build a portfolio around your own idea
+
+I documented the process behind this site as
+[Signature Scroll Portfolio](skills/signature-scroll-portfolio/README.md).
+It covers finding a personal concept, storyboarding, media continuity, responsive
+framing, scroll timing, loading, testing and release.
+
+The starting point is your information and taste—not a copy of my eye animation.
+The README includes a prompt to help prepare a private `about-me.txt` handoff,
+and the skill includes small, tested timing and media-checking helpers.
+
+This portfolio stays sound-free.
+
+---
+
 This repository contains my portfolio website and its current résumé.
 [Development and deployment notes](docs/DEVELOPMENT.md) are kept separately.

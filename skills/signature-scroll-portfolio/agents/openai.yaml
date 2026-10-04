@@ -1,0 +1,4 @@
+interface:
+  display_name: "Signature Scroll Portfolio"
+  short_description: "Personal concepts, cinematic scroll, verified delivery"
+  default_prompt: "Use $signature-scroll-portfolio with my private about-me file to build a distinctive, accessible portfolio and show me a local preview before publishing."
