@@ -1,0 +1,195 @@
+@charset "UTF-8";
+
+:root {
+  color-scheme: dark;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  color: #f4f7fa;
+  background: #050608;
+  font-synthesis: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; line-height: 1.55; }
+a { color: inherit; text-underline-offset: .2em; text-decoration-thickness: 1px; }
+a:hover { text-decoration-thickness: 2px; }
+a:focus-visible { outline: 3px solid #168bff; outline-offset: 5px; border-radius: 2px; }
+::selection { background: #b3dfff; color: #0b2135; }
+h1, h2, h3, p, ul, dl, dd { margin: 0; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  top: .75rem;
+  left: 1rem;
+  z-index: 10;
+  transform: translateY(-200%);
+  padding: .8rem 1rem;
+  background: #8fcbff;
+  color: #050608;
+  font-weight: 700;
+}
+.skip-link:focus { transform: translateY(0); }
+
+.viewer-header { border-bottom: 1px solid #242b34; background: #0a0c10; }
+.viewer-nav {
+  max-width: 1120px;
+  margin-inline: auto;
+  padding: 1rem clamp(1rem, 4vw, 3rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .75rem 1.5rem;
+}
+.back-link, .open-link, .download-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .7rem;
+  min-height: 44px;
+  font-size: .875rem;
+}
+.back-link { color: #d1dae4; text-decoration: none; }
+.back-link:hover { color: #fff; text-decoration: underline; }
+.back-link span { color: #8fcbff; font-size: 1.15rem; }
+.viewer-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1.25rem; }
+.open-link { color: #b4becb; }
+.download-link {
+  padding: .65rem 1.15rem;
+  border: 1px solid #8fcbff;
+  border-radius: 3px;
+  background: #8fcbff;
+  color: #050608;
+  font-weight: 700;
+  text-decoration: none;
+}
+.download-link:hover { background: #b3dfff; border-color: #b3dfff; }
+.download-link span { font-size: 1.15rem; }
+
+.viewer-shell {
+  width: min(100% - 3rem, 920px);
+  margin: clamp(1.75rem, 4vw, 3.5rem) auto 2.5rem;
+}
+.viewer-caption {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .4rem 1rem;
+  margin-bottom: 1rem;
+  color: #b4becb;
+  font-size: .75rem;
+}
+.viewer-caption p:first-child { color: #e5ecf3; font-weight: 700; }
+.viewer-caption span { color: #7f8fa1; padding-inline: .35rem; }
+.resume-paper {
+  color-scheme: light;
+  padding: clamp(1.5rem, 5.8vw, 4rem);
+  background: #fff;
+  color: #18232e;
+  border-radius: 3px;
+  border-top: 4px solid #164d70;
+  box-shadow: 0 16px 60px rgb(0 0 0 / .18);
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+.resume-paper:focus { outline: none; }
+.resume-paper a { color: #164d70; }
+.resume-paper a:hover { color: #082c47; }
+.resume-profile { padding-bottom: 1.25rem; border-bottom: 1px solid #c7d0d8; }
+h1 {
+  font-size: clamp(2rem, 4.3vw, 2.7rem);
+  line-height: 1.12;
+  letter-spacing: -.045em;
+  font-weight: 700;
+}
+.headline { margin-top: .4rem; color: #334759; font-size: 1.08rem; }
+.contact-list, .profile-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem 1.15rem;
+  padding: 0;
+  list-style: none;
+  font-size: .875rem;
+}
+.contact-list { margin-top: 1rem; }
+.profile-links { margin-top: .5rem; }
+.contact-list li, .profile-links li { min-width: 0; }
+.summary { margin-top: 1.2rem; line-height: 1.65; color: #33414e; }
+.resume-section { margin-top: 1.65rem; }
+h2 {
+  margin-bottom: .7rem;
+  color: #15354f;
+  font-size: .82rem;
+  line-height: 1.4;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+h3 { font-size: 1rem; line-height: 1.45; font-weight: 700; }
+.education-entry + .education-entry { margin-top: .8rem; }
+.education-entry p { margin-top: .18rem; font-size: .92rem; color: #485460; }
+.separator { margin-inline: .2rem; color: #71808d; }
+.education-status { display: inline-block; }
+.skills-list > div + div { margin-top: .25rem; }
+.skills-list dt { display: inline; margin-right: .3rem; font-weight: 700; }
+.skills-list dd { display: inline; }
+.project-entry + .project-entry { margin-top: 1.1rem; }
+.project-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .6rem; }
+.project-status { color: #485460; font-size: .84rem; }
+.project-entry ul, .activities-list { padding-left: 1.15rem; }
+.project-entry ul { margin-top: .3rem; }
+.project-entry li + li, .activities-list li + li { margin-top: .3rem; }
+.project-entry li::marker, .activities-list li::marker { color: #334759; }
+.viewer-footer { margin-top: 1.5rem; color: #b4becb; font-size: .8125rem; text-align: center; }
+.viewer-footer a { display: inline-flex; align-items: center; min-height: 44px; color: #8fcbff; }
+
+@media (max-width: 540px) {
+  .viewer-nav { gap: .5rem; padding-block: .75rem; }
+  .viewer-actions { width: 100%; justify-content: space-between; }
+  .viewer-shell { width: calc(100% - 1.5rem); margin-top: 1.5rem; }
+  .viewer-caption { font-size: .72rem; }
+  .resume-paper { padding: 1.45rem 1.15rem 1.65rem; }
+  .contact-list, .profile-links { flex-direction: column; gap: .45rem; font-size: .9rem; }
+  .contact-list a, .profile-links a { display: inline-block; padding-block: .15rem; }
+  .project-heading { display: block; }
+  .project-status { margin-top: .15rem; }
+  .resume-section { margin-top: 1.55rem; }
+  .education-status { display: block; margin-top: .15rem; }
+  .separator { display: none; }
+}
+
+@media (forced-colors: active) {
+  .download-link, .resume-paper { border: 1px solid CanvasText; }
+  a:focus-visible { outline-color: Highlight; }
+}
+
+@media print {
+  @page { size: A4; margin: 15mm; }
+  :root, body { color-scheme: light; background: #fff; color: #000; }
+  .viewer-header, .viewer-caption, .viewer-footer, .skip-link { display: none; }
+  .viewer-shell { width: 100%; margin: 0; }
+  .resume-paper { border: 0; padding: 0; box-shadow: none; font-size: 10pt; }
+  h1 { font-size: 25pt; }
+  h2 { font-size: 10pt; margin-bottom: 4pt; }
+  h3 { font-size: 10pt; }
+  .headline { font-size: 11pt; }
+  .contact-list, .profile-links { font-size: 9pt; gap: 2pt 10pt; }
+  .summary { margin-top: 8pt; line-height: 1.4; }
+  .resume-profile { padding-bottom: 8pt; }
+  .resume-section { margin-top: 10pt; }
+  .education-entry p, .project-status { font-size: 9pt; }
+  .project-entry + .project-entry { margin-top: 7pt; }
+  .project-entry, .education-entry { break-inside: avoid; }
+  .resume-paper a { color: #000; }
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "family": "wide",
+    "file": "/home/vadlahemanth123/Downloads/Portfolio/website/assets/portraits/hero-wide.webp",
+    "size": [
+      1600,
+      900
+    ],
+    "source": "/home/vadlahemanth123/Downloads/Portfolio/Cinematic Blue-Rimmed Hoodie Portrait (1).png",
+    "generative_edit": false
+  },
+  {
+    "family": "tablet",
+    "file": "/home/vadlahemanth123/Downloads/Portfolio/website/assets/portraits/hero-tablet.webp",
+    "size": [
+      1200,
+      900
+    ],
+    "source": "/home/vadlahemanth123/Downloads/Portfolio/Cinematic Blue-Rimmed Hoodie Portrait (1).png",
+    "generative_edit": false
+  },
+  {
+    "family": "tablet-portrait",
+    "file": "/home/vadlahemanth123/Downloads/Portfolio/website/assets/portraits/hero-tablet-portrait.webp",
+    "size": [
+      900,
+      1200
+    ],
+    "source": "/home/vadlahemanth123/Downloads/Portfolio/Cinematic Blue-Rimmed Hoodie Portrait (1).png",
+    "generative_edit": false
+  },
+  {
+    "family": "phone",
+    "file": "/home/vadlahemanth123/Downloads/Portfolio/website/assets/portraits/hero-phone.webp",
+    "size": [
+      900,
+      1600
+    ],
+    "source": "/home/vadlahemanth123/Downloads/Portfolio/Cinematic Blue-Rimmed Hoodie Portrait (1).png",
+    "generative_edit": false
+  }
+]

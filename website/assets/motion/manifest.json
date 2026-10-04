@@ -1,0 +1,180 @@
+{
+  "version": 5,
+  "status": "complete eight-variant candidate: balanced/high closed-GOP AVC; browser QA and integration owned by main",
+  "duration": 20,
+  "fps": 24,
+  "families": [
+    {
+      "id": "wide",
+      "aspect": [
+        16,
+        9
+      ],
+      "poster": "assets/portraits/hero-wide.webp",
+      "variants": [
+        {
+          "quality": "balanced",
+          "src": "assets/motion/wide-v5-balanced-1280x720-277bd0681722.mp4",
+          "type": "video/mp4",
+          "width": 1280,
+          "height": 720,
+          "sizeBytes": 13824327,
+          "sha256": "277bd068172293ec9a517f1914a744edc072ada7f1cfa895a64b287ae5069e1b",
+          "scrub": true,
+          "keyframeInterval": 24,
+          "fps": 24,
+          "codec": "avc1.640028"
+        },
+        {
+          "quality": "high",
+          "src": "assets/motion/wide-v5-high-1920x1080-978d5408066f.mp4",
+          "type": "video/mp4",
+          "width": 1920,
+          "height": 1080,
+          "sizeBytes": 24352312,
+          "sha256": "978d5408066f62912805a60daa29e052ce3d69cea3fda6b5a478c1b1b6e11c6f",
+          "scrub": true,
+          "keyframeInterval": 24,
+          "fps": 24,
+          "codec": "avc1.640028"
+        }
+      ]
+    },
+    {
+      "id": "tablet",
+      "aspect": [
+        4,
+        3
+      ],
+      "poster": "assets/portraits/hero-tablet.webp",
+      "variants": [
+        {
+          "quality": "balanced",
+          "src": "assets/motion/tablet-v5-balanced-960x720-18f38dab76f9.mp4",
+          "type": "video/mp4",
+          "width": 960,
+          "height": 720,
+          "sizeBytes": 11836411,
+          "sha256": "18f38dab76f9a72b96fdaf6c39dd0eac85dda5ba32446dcf199d9c2d3ebe9b94",
+          "scrub": true,
+          "keyframeInterval": 24,
+          "fps": 24,
+          "codec": "avc1.640028"
+        },
+        {
+          "quality": "high",
+          "src": "assets/motion/tablet-v5-high-1440x1080-bb18e7bf4df2.mp4",
+          "type": "video/mp4",
+          "width": 1440,
+          "height": 1080,
+          "sizeBytes": 20582022,
+          "sha256": "bb18e7bf4df20550a2ddb17af12b1f7a2f609371198aeccc6c590879db5bc122",
+          "scrub": true,
+          "keyframeInterval": 24,
+          "fps": 24,
+          "codec": "avc1.640028"
+        }
+      ]
+    },
+    {
+      "id": "tablet-portrait",
+      "aspect": [
+        3,
+        4
+      ],
+      "poster": "assets/portraits/hero-tablet-portrait.webp",
+      "variants": [
+        {
+          "quality": "balanced",
+          "src": "assets/motion/tablet-portrait-v5-balanced-720x960-abb8dcf0c4c7.mp4",
+          "type": "video/mp4",
+          "width": 720,
+          "height": 960,
+          "sizeBytes": 9550931,
+          "sha256": "abb8dcf0c4c7318717c15465c90e3ac80befc20ede981653c820d89d6b2b0a7e",
+          "scrub": true,
+          "keyframeInterval": 24,
+          "fps": 24,
+          "codec": "avc1.640028"
+        },
+        {
+          "quality": "high",
+          "src": "assets/motion/tablet-portrait-v5-high-1080x1440-fdbe8f4f4856.mp4",
+          "type": "video/mp4",
+          "width": 1080,
+          "height": 1440,
+          "sizeBytes": 16694751,
+          "sha256": "fdbe8f4f485603808074e550480680721504d51a401794b52ac00541b1397a95",
+          "scrub": true,
+          "keyframeInterval": 24,
+          "fps": 24,
+          "codec": "avc1.640028"
+        }
+      ]
+    },
+    {
+      "id": "phone",
+      "aspect": [
+        9,
+        16
+      ],
+      "poster": "assets/portraits/hero-phone.webp",
+      "variants": [
+        {
+          "quality": "balanced",
+          "src": "assets/motion/phone-v5-balanced-720x1280-c66c0a9781a8.mp4",
+          "type": "video/mp4",
+          "width": 720,
+          "height": 1280,
+          "sizeBytes": 10614157,
+          "sha256": "c66c0a9781a8f5b7e5a1ab1ab59357d74b68da23cfc87ad0986ccc58e738b490",
+          "scrub": true,
+          "keyframeInterval": 24,
+          "fps": 24,
+          "codec": "avc1.640028"
+        },
+        {
+          "quality": "high",
+          "src": "assets/motion/phone-v5-high-1080x1920-fce09ae4cb64.mp4",
+          "type": "video/mp4",
+          "width": 1080,
+          "height": 1920,
+          "sizeBytes": 23155444,
+          "sha256": "fce09ae4cb6468f0b3f51b61ab10b77ea49c3b17bda8da6a65dece1e6cb8ef6a",
+          "scrub": true,
+          "keyframeInterval": 12,
+          "fps": 24,
+          "codec": "avc1.640028"
+        }
+      ]
+    }
+  ],
+  "cues": [
+    {
+      "from": 0,
+      "to": 4,
+      "id": "identity"
+    },
+    {
+      "from": 4,
+      "to": 8,
+      "id": "mind"
+    },
+    {
+      "from": 8,
+      "to": 12,
+      "id": "build"
+    },
+    {
+      "from": 12,
+      "to": 15.5,
+      "id": "work"
+    },
+    {
+      "from": 15.5,
+      "to": 20,
+      "id": "return"
+    }
+  ],
+  "experience": "native_scroll_background"
+}

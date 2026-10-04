@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500" fill="none">
+  <title>Vendor Payment Memory Agent — context that carries forward</title>
+  <desc>Original conceptual illustration of a demo, not a product screenshot. An invoice exception connects to recalled context and a human review. An arcing path represents previous decision history; no actual vendors, invoices, or payments are depicted.</desc>
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" stroke="#27303d" stroke-opacity=".3" stroke-width=".7"/></pattern>
+    <linearGradient id="memory" x1="359" y1="179" x2="471" y2="317" gradientUnits="userSpaceOnUse"><stop stop-color="#1c2b3c"/><stop offset="1" stop-color="#0d1520"/></linearGradient>
+    <radialGradient id="core"><stop stop-color="#168bff" stop-opacity=".14"/><stop offset="1" stop-color="#168bff" stop-opacity="0"/></radialGradient>
+  </defs>
+  <path fill="url(#grid)" d="M0 0h800v500H0z"/>
+  <ellipse cx="412" cy="245" rx="205" ry="195" fill="url(#core)"/>
+  <path d="M149 212V159c0-33 23-53 58-53h362c51 0 74 27 74 70v22" stroke="#168bff" stroke-width="1.2"/>
+  <path d="m638 188 5 10 5-10" stroke="#8fcbff"/>
+  <path d="M643 295v41c0 35-27 58-62 58H233c-55 0-84-24-84-67v-39" stroke="#334f6a" stroke-dasharray="4 7"/>
+  <path d="m144 298 5-10 5 10" stroke="#526f8c"/>
+  <path d="M205 250h112m183 0h89" stroke="#6e9ac3" stroke-width="1.2"/>
+  <path d="m307 245 10 5-10 5m272-10 10 5-10 5" stroke="#8fcbff"/>
+  <path d="M105 188h65l31 31v94h-96z" fill="#111a25" stroke="#506a84"/>
+  <path d="M170 188v31h31" stroke="#506a84"/>
+  <path d="M124 237h40m-40 14h55m-55 14h40m-40 25h20" stroke="#71869d"/>
+  <circle cx="183" cy="301" r="17" fill="#0d1927" stroke="#168bff"/>
+  <path d="M183 293v10m0 3v2" stroke="#8fcbff" stroke-width="1.6"/>
+  <g>
+    <path d="m365 176 103 27v117l-103-27z" fill="#0e1722" stroke="#33485c"/>
+    <path d="m346 185 103 27v117l-103-27z" fill="#101b28" stroke="#48617a"/>
+    <path d="m327 194 103 27v117l-103-27z" fill="url(#memory)" stroke="#7093b5"/>
+    <path d="m346 223 64 17m-64-3 49 13m-49 0 64 17m-64-3 38 10" stroke="#47667f"/>
+    <path d="m346 286 64 17m-64-3 40 11" stroke="#168bff" stroke-opacity=".8"/>
+    <circle cx="414" cy="207" r="2" fill="#8fcbff"/>
+  </g>
+  <path d="M404 165v-22m-9 6 9-6 9 6" stroke="#315779"/>
+  <path d="M431 344v22m-9-6 9 6 9-6" stroke="#315779"/>
+  <g>
+    <circle cx="644" cy="250" r="53" fill="#0c141f" stroke="#35526c"/>
+    <circle cx="644" cy="250" r="42" stroke="#168bff" stroke-opacity=".6"/>
+    <circle cx="644" cy="238" r="11" stroke="#a1c6e9" stroke-width="1.2"/>
+    <path d="M623 268c1-12 8-17 21-17s20 5 21 17" stroke="#a1c6e9" stroke-width="1.2"/>
+  </g>
+  <g fill="#a6afbc" font-family="Arial, sans-serif" font-size="12" letter-spacing="1.7">
+    <text x="149" y="356" text-anchor="middle">EXCEPTION</text>
+    <text x="401" y="367" text-anchor="middle">RECALLED CONTEXT</text>
+    <text x="644" y="336" text-anchor="middle">HUMAN REVIEW</text>
+  </g>
+  <rect x="300" y="94" width="227" height="24" fill="#0b0e13"/>
+  <text x="414" y="110" text-anchor="middle" fill="#8fcbff" font-family="monospace" font-size="10" letter-spacing="1.7">PRIOR DECISION HISTORY</text>
+  <path d="M68 440h664" stroke="#273440"/>
+  <path d="M68 440h88" stroke="#168bff"/>
+  <circle cx="697" cy="106" r="3" fill="#168bff"/>
+  <path d="M697 115v52" stroke="#28425a" stroke-dasharray="2 5"/>
+</svg>

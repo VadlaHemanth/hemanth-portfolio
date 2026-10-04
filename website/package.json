@@ -1,0 +1,16 @@
+{
+  "name": "vadla-hemanth-portfolio",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A dependency-free editorial portfolio for Vadla Hemanth.",
+  "scripts": {
+    "start": "python3 -m http.server 8080 --bind 127.0.0.1",
+    "build": "node ../scripts/build-site.mjs",
+    "test": "node --test tests/*.test.mjs && python3 tests/check_static.py",
+    "check": "node --check app.js && node --check content.js && node --check content-enrichment.js && node --check motion.js && node --check motion-curve.js && node --check project-screens.js && node --check build-content.mjs && node --check skills.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

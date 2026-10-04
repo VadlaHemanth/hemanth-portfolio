@@ -1,0 +1,10 @@
+# Retire URLs that belonged to the initial, unfiltered source-directory publish.
+# The destination deliberately has no asset, so Pages serves the custom 404.
+/package.json /not-found 302
+/README.md /not-found 302
+/build-content.mjs /not-found 302
+/content-enrichment.js /not-found 302
+/tests/* /not-found 302
+/downloads.html /not-found 302
+/downloads /not-found 302
+/downloads/* /not-found 302

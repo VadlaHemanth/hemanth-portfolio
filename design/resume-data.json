@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "name": "Vadla Hemanth",
+  "headline": "Software Development & Applied AI",
+  "location": "Hyderabad, Telangana, India",
+  "email": "vadlahemanth123@gmail.com",
+  "phone": {
+    "display": "+91 94408 63963",
+    "uri": "tel:+919440863963"
+  },
+  "profiles": [
+    {
+      "label": "Portfolio",
+      "display": "portfolio.hemanthvadla.tech",
+      "url": "https://portfolio.hemanthvadla.tech"
+    },
+    {
+      "label": "GitHub",
+      "display": "github.com/VadlaHemanth",
+      "url": "https://github.com/VadlaHemanth"
+    },
+    {
+      "label": "LinkedIn",
+      "display": "linkedin.com/in/vadlahemanth",
+      "url": "https://www.linkedin.com/in/vadlahemanth/"
+    },
+    {
+      "label": "Kaggle",
+      "display": "kaggle.com/hemanthvadla",
+      "url": "https://www.kaggle.com/hemanthvadla"
+    }
+  ],
+  "summary": "Computer science and data science undergraduate building Python applications and applied-AI prototypes with AI-assisted development and hands-on testing.",
+  "education": [
+    {
+      "institution": "Nalla Narasimha Reddy Education Society's Group of Institutions (NNRG)",
+      "program": "B.Tech in Computer Science",
+      "status": "In progress",
+      "expected_graduation": "2029"
+    },
+    {
+      "institution": "Indian Institute of Technology Madras",
+      "program": "BS in Data Science and Applications",
+      "status": "In progress",
+      "expected_graduation": "2029"
+    }
+  ],
+  "skills": [
+    {
+      "category": "Languages",
+      "items": ["Python", "JavaScript", "TypeScript", "SQL", "C", "HTML", "CSS"]
+    },
+    {
+      "category": "Web & data",
+      "items": ["FastAPI", "Flask", "React", "PostgreSQL", "SQLite", "Redis", "Celery"]
+    },
+    {
+      "category": "Applied AI",
+      "items": ["PyTorch", "OpenCV", "InsightFace", "ONNX Runtime", "Hindsight"]
+    },
+    {
+      "category": "Tools",
+      "items": ["Git", "pytest", "Cloudflare", "Google Colab", "Kaggle", "Rclone"]
+    }
+  ],
+  "projects": [
+    {
+      "title": "Attendance ERP",
+      "status": "In-progress prototype",
+      "bullets": [
+        "Develop a Flask/PostgreSQL college-workflow prototype connecting InsightFace recognition with enrollment, attendance records, review, and reporting.",
+        "Integrate Celery/Redis processing and bulk imports; test capture quality, replay scenarios, and CPU/GPU fallback."
+      ]
+    },
+    {
+      "title": "Vendor Payment Memory Agent",
+      "status": "Hackathon demo",
+      "url": "https://github.com/VadlaHemanth/vendor-payment-memory-agent",
+      "bullets": [
+        "Built a FastAPI demo that recalls prior invoice-exception resolutions with Hindsight to suggest actions for human review.",
+        "Added invoice validation and duplicate checks, with a local JSONL fallback when the memory service is unavailable."
+      ]
+    },
+    {
+      "title": "Image Segmentation Research",
+      "status": "Research prototype",
+      "bullets": [
+        "Compared U-Net and DeepLabV3 in PyTorch using validation-based model selection and a separate held-out test set.",
+        "Exported a model for ONNX CPU inference; added resumable checkpoints."
+      ]
+    },
+    {
+      "title": "Google Drive Photo & Video Uploader",
+      "status": "Self-hosted project",
+      "url": "https://github.com/VadlaHemanth/gdrive-photo-uploader",
+      "bullets": [
+        "Built a FastAPI and JavaScript uploader with chunked transfers, retry/resume, and a virtualized browser queue.",
+        "Connected background Rclone transfers to Google Drive with per-file progress."
+      ]
+    }
+  ],
+  "activities": [
+    "Organized and led CodeMania and C Hunt technical events at NNRG.",
+    "Participated as a delegate at NNRG MUN 2026."
+  ]
+}

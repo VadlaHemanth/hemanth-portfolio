@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500" fill="none">
+  <title>Satellite research — observation, candidate screening, and context</title>
+  <desc>An original synthetic diagram, not a satellite image or real incident. Layered observation planes and contour lines lead to a highlighted candidate region. The highlighted region is not evidence of a spill or vessel attribution.</desc>
+  <defs>
+    <pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".7" fill="#293746"/></pattern>
+    <linearGradient id="plane" x1="185" y1="151" x2="552" y2="401" gradientUnits="userSpaceOnUse"><stop stop-color="#162330"/><stop offset="1" stop-color="#0b111a"/></linearGradient>
+    <linearGradient id="water" x1="232" y1="172" x2="509" y2="312" gradientUnits="userSpaceOnUse"><stop stop-color="#14324c" stop-opacity=".5"/><stop offset="1" stop-color="#111923" stop-opacity=".2"/></linearGradient>
+    <clipPath id="mapclip"><path d="m135 226 254-130 268 140-254 138z"/></clipPath>
+  </defs>
+  <path fill="url(#dots)" d="M0 0h800v500H0z"/>
+  <g stroke="#2b4157">
+    <path d="m135 279 254-130 268 140-254 138z" fill="#0b121b"/>
+    <path d="m135 251 254-130 268 140-254 138z" fill="#0d1620"/>
+    <path d="m135 226 254-130 268 140-254 138z" fill="url(#plane)" stroke="#54758f"/>
+    <path d="M135 226v53m268 95v53m254-191v53" stroke-dasharray="2 5"/>
+  </g>
+  <g clip-path="url(#mapclip)">
+    <path d="M276 112c65 7 8 54 70 82s48 40 114 57 59 59 107 70l-87 111-305-185z" fill="url(#water)"/>
+    <g stroke="#364d60" stroke-width="1">
+      <path d="M170 124c73 19 112 44 124 65s-67 44-49 64 85 26 103 51-43 30-2 54 106 18 130 37"/>
+      <path d="M188 115c73 19 112 44 124 65s-67 44-49 64 85 26 103 51-43 30-2 54 106 18 130 37"/>
+      <path d="M205 105c73 19 112 44 124 65s-67 44-49 64 85 26 103 51-43 30-2 54 106 18 130 37"/>
+      <path d="M223 96c73 19 112 44 124 65s-67 44-49 64 85 26 103 51-43 30-2 54 106 18 130 37"/>
+      <path d="M241 86c73 19 112 44 124 65s-67 44-49 64 85 26 103 51-43 30-2 54 106 18 130 37"/>
+      <path d="M260 77c73 19 112 44 124 65s-67 44-49 64 85 26 103 51-43 30-2 54 106 18 130 37"/>
+      <path d="M280 68c73 19 112 44 124 65s-67 44-49 64 85 26 103 51-43 30-2 54 106 18 130 37"/>
+    </g>
+    <path d="M390 222c28-22 72-22 82-4s-5 18 20 29 20 25-5 35-37-8-67-3-55 0-48-16 3-27 18-41z" fill="#168bff" fill-opacity=".13" stroke="#168bff" stroke-width="1.4"/>
+    <path d="M398 232c20-15 49-16 57-4s-5 14 12 22 18 17 0 23-27-7-47-2-39-4-32-14 0-16 10-25z" stroke="#8fcbff" stroke-opacity=".6" stroke-width=".7"/>
+    <path d="m162 200 336 177m-254-221 333 173m-405-76 296-150m-213 194 293-151" stroke="#537b9b" stroke-opacity=".2"/>
+    <path d="m283 226 277 139" stroke="#8fcbff" stroke-opacity=".32" stroke-dasharray="3 6"/>
+  </g>
+  <path d="M440 248V117l72-37h121" stroke="#168bff"/>
+  <circle cx="440" cy="248" r="4" fill="#8fcbff"/>
+  <circle cx="440" cy="248" r="12" stroke="#168bff" stroke-opacity=".6"/>
+  <path d="M243 288v88l-61 33H88" stroke="#536981"/>
+  <circle cx="243" cy="288" r="3" fill="#a6afbc"/>
+  <path d="M582 275v79l64 32h66" stroke="#405a74" stroke-dasharray="3 5"/>
+  <g font-family="Arial, sans-serif">
+    <text x="517" y="66" fill="#8fcbff" font-size="12" letter-spacing="1.8">CANDIDATE REGION</text>
+    <text x="88" y="433" fill="#a6afbc" font-size="11" letter-spacing="1.4">LAYERED OBSERVATION</text>
+    <text x="622" y="411" fill="#8497ad" font-size="11" letter-spacing="1.4">CONTEXT</text>
+  </g>
+  <g stroke="#5e768e">
+    <path d="M91 90v30m-15-15h30"/>
+    <circle cx="91" cy="105" r="24" stroke="#2f4359"/>
+    <path d="M695 137v12m-6-6h12"/>
+  </g>
+  <path d="M75 462h650" stroke="#273440"/>
+  <path d="M75 462h89" stroke="#168bff"/>
+</svg>
