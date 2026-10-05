@@ -157,6 +157,8 @@ limit the zoom to keep the whole ERP card visible below the navigation.
 Its approach and retreat match, without a frozen plateau. Surrounding cards
 recede, and the section heading fades away instead of covering the focus.
 Off-focus links leave the tab order while the camera is close.
+Long renderer stalls during this precise-frame interval extend the guide
+instead of making its camera jump forward to catch up with the wall clock.
 
 The film and HTML covers use the same camera coordinates, but text is projected
 directly into the viewport rather than enlarged as part of a cached video layer.

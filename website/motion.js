@@ -3,8 +3,8 @@
  * interception, looping player or forced playback timer. Loading reports bytes,
  * not invented progress. Reduced motion and direct links skip the film.
  */
-import {initProjectScreens,useCoverFrame} from './project-screens.js?v=20261005-3';
-import {MOTION_POINTS,SHOWCASE_RANGE,GUIDED_DURATION,STORY_SCROLL_SCREENS} from './motion-curve.js?v=20261005-3';
+import {initProjectScreens,useCoverFrame} from './project-screens.js?v=20261005-4';
+import {MOTION_POINTS,SHOWCASE_RANGE,GUIDED_DURATION,STORY_SCROLL_SCREENS} from './motion-curve.js?v=20261005-4';
 const browser = typeof window !== 'undefined';
 const systemMotion = browser ? window.matchMedia('(prefers-reduced-motion: reduce)') : {matches:false};
 const LAST_FRAME = 479/24;
@@ -146,6 +146,11 @@ export function guidedScrollPosition(start,end,progress) {
   // Responsive from the first frame; equalization belongs to the media curve.
   return start+(end-start)*clamp(progress);
 }
+export function guidedFrameDuration(delta,preciseShowcase=false) {
+  // The project video is paused for exact frames. Don't race the camera to
+  // catch up with wall time after a busy renderer or a long frame.
+  return Math.max(0,preciseShowcase&&delta>80?1000/30:delta);
+}
 export function guidedMediaRate(progress,progressPerSecond) {
   const left=clamp(progress-.0005),right=clamp(progress+.0005);
   return clamp((progressTime(right)-progressTime(left))/Math.max(.000001,right-left)*progressPerSecond,.125,4);
@@ -223,11 +228,12 @@ export function initMotion() {
     video.playbackRate=guidedMediaRate(scrollProgress(scrollY,layoutTop,layoutHeight,stageHeight),guideProgressPerSecond);
     Promise.resolve(video.play()).catch(()=>{guideNative=false;});
     if(video.requestVideoFrameCallback)videoFrameHandle=video.requestVideoFrameCallback(trackPresentedFrame);
-    let began=null;
+    let elapsed=0,previous=null;
     function advance(now) {
       if(document.hidden||reduced()){cancelGuide();return;}
-      began ??= now;
-      const p=clamp((now-began)/duration);
+      elapsed+=guidedFrameDuration(previous===null?0:now-previous,showcasePrecision);
+      previous=now;
+      const p=clamp(elapsed/duration);
       window.scrollTo({top:guidedScrollPosition(startY,endY,p),behavior:'instant'});
       if(p<1)guideHandle=requestAnimationFrame(advance);
       else {

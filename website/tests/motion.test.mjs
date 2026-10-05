@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import { chooseMotionFamily, chooseMotionVariant, chooseCapableVariant, scrollProgress, progressTime, smoothTime, SCROLL_BEATS, showcaseFocus, showcaseCamera, loadingBudget, shouldReframe, guidedStoryEnd, guidedScrollDuration, guidedScrollPosition, guidedMediaRate, insideFrameTime, flowRamp } from '../motion.js';
+import { chooseMotionFamily, chooseMotionVariant, chooseCapableVariant, scrollProgress, progressTime, smoothTime, SCROLL_BEATS, showcaseFocus, showcaseCamera, loadingBudget, shouldReframe, guidedStoryEnd, guidedScrollDuration, guidedScrollPosition, guidedFrameDuration, guidedMediaRate, insideFrameTime, flowRamp } from '../motion.js';
 import {SHOWCASE_RANGE,GUIDED_DURATION,STORY_SCROLL_SCREENS} from '../motion-curve.js';
 import {planeMatrix, SCREEN_PROJECTS, projectFocusBounds, useCoverFrame} from '../project-screens.js';
 const surfaces=JSON.parse(readFileSync(new URL('../assets/motion/project-surfaces.json',import.meta.url),'utf8'));
@@ -147,6 +147,17 @@ test('focus camera cruises at a steady rate, with short smooth starts and turns'
     const derivative=(flowRamp(t+.00001)-flowRamp(t-.00001))/.00002;
     assert(Math.abs(derivative-1/.84)<.00001);
   }
+});
+
+test('a busy renderer cannot fast-forward the paused project camera',()=>{
+  assert.equal(guidedFrameDuration(16,true),16);
+  assert.equal(guidedFrameDuration(50,true),50);
+  assert.equal(guidedFrameDuration(-5,true),0);
+  assert.equal(guidedFrameDuration(700,true),1000/30);
+  assert.equal(guidedFrameDuration(700,false),700,'continuous video keeps its native clock outside the precise showcase');
+  const p=SHOWCASE_RANGE.start+(SHOWCASE_RANGE.peak-SHOWCASE_RANGE.start)*.5;
+  const delta=guidedFrameDuration(700,true)/GUIDED_DURATION;
+  assert(Math.abs(showcaseFocus(p+delta)-showcaseFocus(p))<.04,'no large camera leap after the stall');
 });
 
 test('project camera stays aligned with the retimed showcase, then withdraws once', () => {
