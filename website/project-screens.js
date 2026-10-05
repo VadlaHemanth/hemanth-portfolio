@@ -11,6 +11,14 @@ export function useCoverFrame(width,height,family) {
   return family==='phone'&&width/height>=.39;
 }
 
+export function projectFocusBounds(data,family) {
+  const quad=data?.families?.[family]?.frames?.['367']?.[1];
+  if(!Array.isArray(quad)||quad.length!==4||!quad.every(p=>Array.isArray(p)&&p.length===2&&p.every(Number.isFinite)))return null;
+  const xs=quad.map(p=>p[0]),ys=quad.map(p=>p[1]);
+  const bounds={left:Math.min(...xs),right:Math.max(...xs),top:Math.min(...ys),bottom:Math.max(...ys)};
+  return bounds.right>bounds.left&&bounds.bottom>bounds.top?Object.freeze(bounds):null;
+}
+
 export function planeMatrix(points,width=640,height=360) {
   const source=[[0,0],[width,0],[width,height],[0,height]],m=[];
   for(let i=0;i<4;i++){
@@ -28,7 +36,7 @@ export function planeMatrix(points,width=640,height=360) {
   return [a,d,0,g,b,e,0,h,0,0,1,0,c,f,0,1];
 }
 
-export function initProjectScreens(stage,camera=stage) {
+export function initProjectScreens(stage) {
   const layer=document.createElement('div');layer.className='project-screens';layer.hidden=true;
   layer.setAttribute('aria-label','Projects on the processor screens');
   const nodes=SCREEN_PROJECTS.map(card=>{
@@ -45,36 +53,59 @@ export function initProjectScreens(stage,camera=stage) {
   const label=document.createElement('span');label.className='eyebrow';label.textContent='THREE SELECTED BUILDS';
   const title=document.createElement('h2');title.textContent='Ideas made useful.';
   const note=document.createElement('p');note.textContent='Computer vision · Applied AI · Software';
-  heading.append(label,title,note);stage.append(heading);camera.append(layer);
-  let data=null,geometry={width:0,height:0,x:0,y:0};
+  // Keep text outside the video bitmap's transformed layer. Apply the same
+  // camera to its quads directly so enlarged labels stay sharp.
+  heading.append(label,title,note);stage.append(heading,layer);
+  let data=null,focusTargets={},geometry={width:0,height:0,x:0,y:0};
+  let viewport={width:stage.clientWidth,height:stage.clientHeight};
   const abort=new AbortController(),deadline=setTimeout(()=>abort.abort(),8000);
   const loaded=fetch('./assets/motion/project-surfaces.json',{cache:'no-cache',signal:abort.signal}).then(r=>{
     if(!r.ok)throw new Error('Project surface geometry unavailable');return r.json();
-  }).then(j=>{data=j;}).catch(()=>{data=null;}).finally(()=>clearTimeout(deadline));
+  }).then(j=>{
+    data=j;
+    focusTargets=Object.fromEntries(Object.keys(j.families||{}).map(family=>[family,projectFocusBounds(j,family)]));
+  }).catch(()=>{data=null;}).finally(()=>clearTimeout(deadline));
   function resize(aspect,cover) {
-    const sw=stage.clientWidth,sh=stage.clientHeight,ratio=aspect[0]/aspect[1];
+    const sw=viewport.width,sh=viewport.height,ratio=aspect[0]/aspect[1];
     const width=(cover?Math.max:Math.min)(sw,sh*ratio),height=width/ratio;
     geometry={width,height,x:(sw-width)/2,y:(sh-height)/2};
   }
-  function update(time,family) {
+  function update(time,family,view={scale:1,lift:0,shift:0,focus:0}) {
+    const {focus,scale,lift,shift}=view;
     const frame=Math.max(0,Math.min(479,Math.round(time*24)));
     const row=data?.families[family],quads=row?.frames[String(frame)];
-    if(!quads){layer.hidden=true;heading.hidden=true;nodes.forEach(n=>n.tabIndex=-1);return false;}
-    resize(row.aspect,useCoverFrame(stage.clientWidth,stage.clientHeight,family));layer.hidden=false;heading.hidden=false;
+    if(!quads){
+      if(!layer.hidden){layer.hidden=true;heading.hidden=true;nodes.forEach(n=>n.tabIndex=-1);}
+      return false;
+    }
+    resize(row.aspect,useCoverFrame(viewport.width,viewport.height,family));
+    if(layer.hidden){layer.hidden=false;heading.hidden=false;}
     // Keep most of the longer breathing interval fully readable; the camera,
     // rather than a long text fade, supplies the movement through these frames.
     const alpha=Math.min(1,Math.max(0,(time-15.02)/.06),Math.max(0,(15.625-time)/.06));
-    layer.style.opacity=String(alpha);heading.style.opacity=String(alpha);
+    layer.style.opacity=String(alpha);
+    // The project supplies its own title once the camera approaches it.
+    heading.style.opacity=String(alpha*(1-Math.min(1,Math.max(0,(focus-.12)/.4))));
     for(let i=0;i<3;i++){
       const q=quads[i],center=[q.reduce((s,p)=>s+p[0],0)/4,q.reduce((s,p)=>s+p[1],0)/4];
-      const inset=q.map(([x,y])=>[
-        geometry.x+(center[0]+(x-center[0])*.969)*geometry.width,
-        geometry.y+(center[1]+(y-center[1])*.949)*geometry.height,
-      ]);
+      const inset=q.map(([x,y])=>{
+        const px=geometry.x+(center[0]+(x-center[0])*.969)*geometry.width;
+        const py=geometry.y+(center[1]+(y-center[1])*.949)*geometry.height;
+        return [
+          viewport.width/2+(px-viewport.width/2)*scale+shift,
+          viewport.height/2+(py-viewport.height/2)*scale+lift,
+        ];
+      });
       const matrix=planeMatrix(inset);if(!matrix){nodes[i].hidden=true;continue;}
-      nodes[i].hidden=false;nodes[i].style.transform=`matrix3d(${matrix.join(',')})`;nodes[i].tabIndex=alpha>.9?0:-1;
+      nodes[i].hidden=false;nodes[i].style.transform=`matrix3d(${matrix.join(',')})`;
+      nodes[i].style.opacity=String(i===1?1:1-focus*.55);
+      const inert=i!==1&&focus>.65,tabIndex=alpha>.9&&(i===1||focus<.45)?0:-1;
+      if(nodes[i].inert!==inert)nodes[i].inert=inert;
+      if(nodes[i].tabIndex!==tabIndex)nodes[i].tabIndex=tabIndex;
     }
     return true;
   }
-  return{loaded,update,hide(){layer.hidden=true;heading.hidden=true;nodes.forEach(n=>n.tabIndex=-1);}};
+  return{loaded,update,focusBounds:family=>focusTargets[family]||null,
+    resize:(width,height)=>{viewport={width,height};},
+    hide(){layer.hidden=true;heading.hidden=true;nodes.forEach(n=>n.tabIndex=-1);}};
 }

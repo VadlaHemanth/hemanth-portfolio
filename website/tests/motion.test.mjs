@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chooseMotionFamily, chooseMotionVariant, chooseCapableVariant, scrollProgress, progressTime, smoothTime, SCROLL_BEATS, showcaseFocus, showcaseCamera, loadingBudget, shouldReframe, guidedStoryEnd, guidedScrollDuration, guidedScrollPosition, guidedMediaRate, insideFrameTime } from '../motion.js';
-import {SHOWCASE_RANGE,GUIDED_TIME_SCALE} from '../motion-curve.js';
-import {planeMatrix, SCREEN_PROJECTS} from '../project-screens.js';
+import {readFileSync} from 'node:fs';
+import { chooseMotionFamily, chooseMotionVariant, chooseCapableVariant, scrollProgress, progressTime, smoothTime, SCROLL_BEATS, showcaseFocus, showcaseCamera, loadingBudget, shouldReframe, guidedStoryEnd, guidedScrollDuration, guidedScrollPosition, guidedMediaRate, insideFrameTime, flowRamp } from '../motion.js';
+import {SHOWCASE_RANGE,GUIDED_DURATION,STORY_SCROLL_SCREENS} from '../motion-curve.js';
+import {planeMatrix, SCREEN_PROJECTS, projectFocusBounds, useCoverFrame} from '../project-screens.js';
+const surfaces=JSON.parse(readFileSync(new URL('../assets/motion/project-surfaces.json',import.meta.url),'utf8'));
 
 const variants = [
   { quality: 'low', type: 'video/mp4', width: 864, height: 486 },
@@ -64,9 +66,10 @@ test('guided visit ends on the full final portrait, before the work section ente
     assert.equal(progressTime(scrollProgress(end,top,height,viewport)),479/24);
     const oldWorkTarget=top+height-108;
     assert(end<oldWorkTarget,'do not scroll past the final photo to align the work heading');
-    const oldRate=(oldWorkTarget-top)/guidedScrollDuration(oldWorkTarget-top,viewport);
-    const newRate=(end-top)/guidedScrollDuration(end-top,viewport);
+    const oldRate=(oldWorkTarget-top)/guidedScrollDuration(oldWorkTarget-top,viewport,height-viewport);
+    const newRate=(end-top)/guidedScrollDuration(end-top,viewport,height-viewport);
     assert(Math.abs(oldRate-newRate)<1e-9,'stop earlier without changing the journey speed');
+    assert.equal(guidedScrollDuration(end-top,viewport,height-viewport),GUIDED_DURATION);
   }
 });
 
@@ -110,34 +113,39 @@ test('eye passes are quicker while the moving project reveal has readable breath
   assert.ok(progressTime(.04)>1);
   const atFrame=frame=>SCROLL_BEATS.find(([,time])=>Math.abs(time-frame/24)<1e-8)?.[0];
   const entry=atFrame(96)-atFrame(22),exit=atFrame(471)-atFrame(432);
-  const reference=27*GUIDED_TIME_SCALE;
-  assert.ok(entry*reference>=3.9&&entry*reference<=4.1,'eye entry is slightly quicker');
-  assert.ok(exit*reference>=3.5&&exit*reference<=3.75,'eye return is slightly quicker');
+  const reference=GUIDED_DURATION/1000;
+  assert.ok(entry*reference>=1.9&&entry*reference<=2.3,'eye entry is brisk, without the former long macro crawl');
+  assert.ok(exit*reference>=1.65&&exit*reference<=2.1,'the same eye returns briskly');
   assert.ok(exit<entry);
   assert.ok(atFrame(22)<.015,'near-static source opening is not stretched');
   const reading=(atFrame(374)-atFrame(361))*reference;
-  assert.ok(reading>=2.8&&reading<=3.5,'readable project names without a repeated stationary page');
+  assert.ok(reading>=2.6&&reading<=3.1,'readable project names during the moving focus');
   assert.ok(progressTime(.64)>progressTime(.61));
   assert.ok(progressTime(.67)>progressTime(.64));
 });
 
-test('only the eye passes are 10% faster; other guided viewing intervals are preserved',()=>{
+test('interior travel has a steady cadence instead of the old stop-start rate curve',()=>{
   const atFrame=frame=>SCROLL_BEATS.find(([,time])=>Math.round(time*24)===frame)[0];
-  const duration=guidedScrollDuration(8.6*768,768),beforeDuration=8.6*2850;
-  for(const [start,end,beforeStart,beforeEnd,speed] of [
-    [0,22,0,.01110239,1],
-    [22,96,.01110239,.17390675,1.1],
-    [96,240,.17390675,.35930821,1],
-    [240,324,.35930821,.48898045,1],
-    [324,360,.48898045,.53616622,1],
-    [360,374,.53616622,.65669191,1],
-    [374,432,.65669191,.84441041,1],
-    [432,471,.84441041,.99256591,1.1],
-    [471,479,.99256591,1,1],
-  ]) {
-    const before=(beforeEnd-beforeStart)*beforeDuration;
-    const after=(atFrame(end)-atFrame(start))*duration;
-    assert(Math.abs(before/after-speed)<.00002,`${start}–${end}: only eye viewing time changes`);
+  for(const [start,end,seconds,frames] of [[100,235,3.6,144],[244,319,2.7,84],[378,427,2.8,58]]) {
+    for(let frame=start;frame<end;frame++) {
+      const dt=(atFrame(frame+1)-atFrame(frame))*GUIDED_DURATION/1000;
+      assert(Math.abs(dt-seconds/frames)<.000001,'uniform non-eye travel, apart from boundary blends');
+    }
+  }
+  for(const [start,end] of [[24,93],[434,469]]) {
+    for(let frame=start;frame<end;frame++) {
+      const dt=(atFrame(frame+1)-atFrame(frame))*GUIDED_DURATION/1000;
+      assert(dt>=1/96-.00001&&dt<=1/20+.00001,'bounded eye-frame cadence');
+    }
+  }
+});
+
+test('focus camera cruises at a steady rate, with short smooth starts and turns',()=>{
+  assert.equal(flowRamp(0),0);assert.equal(flowRamp(1),1);
+  for(let i=1;i<1000;i++)assert(flowRamp(i/1000)>flowRamp((i-1)/1000));
+  for(const t of [.25,.4,.6,.75]){
+    const derivative=(flowRamp(t+.00001)-flowRamp(t-.00001))/.00002;
+    assert(Math.abs(derivative-1/.84)<.00001);
   }
 });
 
@@ -164,14 +172,22 @@ test('Attendance ERP occupies the middle plane; no private repository is linked'
   assert.ok(SCREEN_PROJECTS.every(p=>!p.href));
 });
 
-test('showcase camera reserves navigation clearance across authored aspect ratios', () => {
-  for(const [w,h,f,edge,ratio] of [[1366,768,'wide',.055,16/9],[1024,768,'tablet',.112,4/3],[390,693,'phone',.033,9/16],[768,1024,'tablet-portrait',.026,3/4]]){
-    const camera=showcaseCamera(SHOWCASE_RANGE.peak,w,h,f,88),fit=Math.min(h,w/ratio);
-    const top=((h-fit)/2+edge*fit-h*.35)*camera.scale+h*.35+camera.lift;
-    assert.ok(top>=103.9,`${f} top=${top}`);
-    assert.ok(camera.scale>1&&camera.scale<=1.075);
-    assert.deepEqual(showcaseCamera(.1,w,h,f,88),{scale:1,lift:0});
+test('Attendance ERP becomes the clear focal point without clipping its card', () => {
+  for(const [w,h,f] of [[1366,768,'wide'],[1366,600,'wide'],[1024,768,'tablet'],[390,844,'phone'],[820,1180,'tablet-portrait']]){
+    const bounds=projectFocusBounds(surfaces,f),camera=showcaseCamera(SHOWCASE_RANGE.peak,w,h,f,88,bounds);
+    const ratio=surfaces.families[f].aspect[0]/surfaces.families[f].aspect[1];
+    const fit=(useCoverFrame(w,h,f)?Math.max:Math.min)(h,w/ratio),width=fit*ratio;
+    const x=value=>((w-width)/2+value*width-w/2)*camera.scale+w/2+camera.shift;
+    const y=value=>((h-fit)/2+value*fit-h/2)*camera.scale+h/2+camera.lift;
+    assert(x(bounds.left)>=8&&x(bounds.right)<=w-8,`${f}: whole ERP card fits horizontally`);
+    assert(y(bounds.top)>=96&&y(bounds.bottom)<=h-20,`${f}: heading and lower margin remain clear`);
+    assert(camera.scale>=(f==='phone'?1.2:2)&&camera.scale<=2.65);
+    assert(Math.abs((x(bounds.left)+x(bounds.right))/2-w/2)<1);
+    assert.deepEqual(showcaseCamera(.1,w,h,f,88,bounds),{scale:1,lift:0,shift:0,focus:0});
+    assert.deepEqual(showcaseCamera(1,w,h,f,88,bounds),{scale:1,lift:0,shift:0,focus:0});
   }
+  assert.equal(projectFocusBounds({},'wide'),null);
+  assert.deepEqual(showcaseCamera(.6,1366,768,'wide',88),{scale:1,lift:0,shift:0,focus:0});
 });
 
 test('high-quality efficient media is selected on slow networks and limited devices', () => {
@@ -210,9 +226,13 @@ test('mobile browser toolbar movement does not reframe or rescale the scroll ran
 });
 
 test('hero guided visit takes a readable route rather than a fast default anchor jump', () => {
-  assert.ok(guidedScrollDuration(6800,768)>=24000);
-  assert.ok(guidedScrollDuration(6800,768)<=27000);
-  assert.equal(guidedScrollDuration(0,768),5000);
+  assert.ok(GUIDED_DURATION>=17000&&GUIDED_DURATION<=18000);
+  for(const viewport of [600,768,844,1180]){
+    const span=viewport*STORY_SCROLL_SCREENS;
+    assert.equal(guidedScrollDuration(span,viewport,span),GUIDED_DURATION);
+    assert.equal(guidedScrollDuration(span/2,viewport,span),GUIDED_DURATION/2);
+  }
+  assert.equal(guidedScrollDuration(0,768),1200);
   assert.equal(guidedScrollPosition(0,6800,0),0);
   assert.equal(guidedScrollPosition(0,6800,1),6800);
   assert.equal(guidedScrollPosition(0,6800,.1),680,'no slow ease-in before the already slow opening');
@@ -237,7 +257,7 @@ test('guided native playback follows the calibrated curve at bounded supported r
     assert.ok(Number.isFinite(rate)&&rate>=.125&&rate<=4);
   }
   assert.ok(guidedMediaRate(.03,1/27)>0);
-  assert.ok(guidedMediaRate(.9,1/27)<guidedMediaRate(.01,1/27),'native eye return remains deliberate');
+  assert.ok(guidedMediaRate(.9,1/27)<guidedMediaRate(.01,1/27),'return remains controlled after the fast opening');
 });
 
 test('project card homography maps all corners to the real plane', () => {

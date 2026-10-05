@@ -3,8 +3,8 @@
  * interception, looping player or forced playback timer. Loading reports bytes,
  * not invented progress. Reduced motion and direct links skip the film.
  */
-import {initProjectScreens,useCoverFrame} from './project-screens.js?v=20261005-2';
-import {MOTION_POINTS,SHOWCASE_RANGE,GUIDED_TIME_SCALE} from './motion-curve.js?v=20261005-2';
+import {initProjectScreens,useCoverFrame} from './project-screens.js?v=20261005-3';
+import {MOTION_POINTS,SHOWCASE_RANGE,GUIDED_DURATION,STORY_SCROLL_SCREENS} from './motion-curve.js?v=20261005-3';
 const browser = typeof window !== 'undefined';
 const systemMotion = browser ? window.matchMedia('(prefers-reduced-motion: reduce)') : {matches:false};
 const LAST_FRAME = 479/24;
@@ -26,26 +26,49 @@ const BEAT_TANGENTS=SCROLL_BEATS.map((_,k)=>{
 const clamp=(value,min=0,max=1)=>Math.min(max,Math.max(min,value));
 const ease=value=>{const t=clamp(value);return t*t*(3-2*t);};
 
-export function showcaseFocus(progress) {
-  // There is no frozen scroll interval: the camera keeps approaching the work,
-  // then withdraws with the reversed film instead of presenting it twice.
-  const {start,peak,leave,end}=SHOWCASE_RANGE;
-  return ease((progress-start)/(peak-start))*(1-ease((progress-leave)/(end-leave)));
+export function flowRamp(value,edge=.16) {
+  // Integrate a smooth velocity ramp, then cruise at a constant rate.
+  // Acceleration also reaches zero at the joins (no abrupt camera kick).
+  const t=clamp(value);
+  if(t>1-edge)return 1-flowRamp(1-t,edge);
+  if(t>=edge)return (t-edge/2)/(1-edge);
+  const u=t/edge;
+  return edge*(u**3-.5*u**4)/(1-edge);
 }
 
-export function showcaseCamera(progress,width,height,family='wide',headerHeight=88) {
+export function showcaseFocus(progress) {
+  // One continuous approach to Attendance ERP and a matching retreat.
+  const {start,peak,leave,end}=SHOWCASE_RANGE;
+  return flowRamp((progress-start)/(peak-start))*(1-flowRamp((progress-leave)/(end-leave)));
+}
+
+export function showcaseCamera(progress,width,height,family='wide',headerHeight=88,bounds=null) {
+  if(!bounds)return {scale:1,lift:0,shift:0,focus:0};
   const focus=showcaseFocus(progress);
   const ratios={wide:16/9,tablet:4/3,'tablet-portrait':3/4,phone:9/16};
   const topEdge={wide:.055,tablet:.112,'tablet-portrait':.026,phone:.033};
   const ratio=ratios[family]||16/9;
   const fittedHeight=(useCoverFrame(width,height,family)?Math.max:Math.min)(height,width/ratio);
-  const maxZoom=family==='tablet'? .045 : family==='phone'?clamp(width/(fittedHeight*ratio*.67)-1,0,.075):.075;
-  const top=(height-fittedHeight)/2+(topEdge[family]||.055)*fittedHeight;
-  const zoomedTop=(top-height*.35)*(1+maxZoom)+height*.35;
-  const lift=Math.max(0,headerHeight+16-zoomedTop);
+  const fittedWidth=fittedHeight*ratio,ox=(width-fittedWidth)/2,oy=(height-fittedHeight)/2;
+  const cx=ox+(bounds.left+bounds.right)*fittedWidth/2,cy=oy+(bounds.top+bounds.bottom)*fittedHeight/2;
+  const cardWidth=(bounds.right-bounds.left)*fittedWidth,cardHeight=(bounds.bottom-bounds.top)*fittedHeight;
+  const widthFraction=family==='phone'?.92:family==='tablet-portrait'?.82:.74;
+  const maxScale=Math.max(1,Math.min(2.65,width*widthFraction/cardWidth,(height-headerHeight-40)/cardHeight));
+  const scale=Math.min(maxScale,Math.exp(Math.log(maxScale)*focus));
+  const top=oy+(topEdge[family]||.055)*fittedHeight;
+  const baseLift=Math.max(0,headerHeight+16-top);
   const {liftStart,landed,end,liftEnd}=SHOWCASE_RANGE;
   const liftFocus=ease((progress-liftStart)/(landed-liftStart))*(1-ease((progress-end)/(liftEnd-end)));
-  return {scale:1+maxZoom*focus,lift:lift*liftFocus};
+  if(!focus&&!liftFocus)return {scale:1,lift:0,shift:0,focus:0};
+  const targetY=clamp(headerHeight+(height-headerHeight)*.43,
+    headerHeight+16+cardHeight*maxScale/2,height-24-cardHeight*maxScale/2);
+  const wantedX=cx+(width/2-cx)*focus;
+  const wantedY=(cy+baseLift*liftFocus)*(1-focus)+targetY*focus;
+  const marginX=(scale-1)*width/2,marginY=(scale-1)*height/2;
+  const shift=clamp(wantedX-(width/2+(cx-width/2)*scale),-marginX,marginX);
+  // A small top inset remains behind the fixed header, never below it.
+  const lift=clamp(wantedY-(height/2+(cy-height/2)*scale),-marginY,marginY+Math.max(0,headerHeight-8));
+  return {scale,lift,shift,focus};
 }
 
 export function shouldReframe(previous,next,coarse=false) {
@@ -115,9 +138,9 @@ export function guidedStoryEnd(top,height,viewportHeight) {
   // Round inward so fractional layout pixels cannot reveal following content.
   return Math.floor(top+Math.max(0,height-viewportHeight));
 }
-export function guidedScrollDuration(distance,viewportHeight) {
-  // Compensate for the shorter eye intervals so other beats keep their timing.
-  return clamp(Math.abs(distance)/Math.max(1,viewportHeight)*2850*GUIDED_TIME_SCALE,5000,28500);
+export function guidedScrollDuration(distance,viewportHeight,storyDistance=viewportHeight*STORY_SCROLL_SCREENS) {
+  // The same authored journey has the same timing on desktop, tablet and phone.
+  return clamp(Math.abs(distance)/Math.max(1,storyDistance)*GUIDED_DURATION,1200,28500);
 }
 export function guidedScrollPosition(start,end,progress) {
   // Responsive from the first frame; equalization belongs to the media curve.
@@ -155,12 +178,13 @@ export function initMotion() {
   const chapters=[...document.querySelectorAll('[data-chapter]')];
   const camera=document.createElement('div');camera.className='story-camera';
   video.before(camera);camera.append(video);
-  const screens=initProjectScreens(stage,camera);
+  const screens=initProjectScreens(stage);
   const oldInert=site?.inert||false;
   let manifest=null,controller=null,blobURL=null,loading=false,ready=false,disabled=false;
   let family=null,currentAsset=null,frameHandle=0,seekPending=false,seekFrameTime=null,lastTick=0,displayTime=0,targetTime=0;
   let requestEpoch=0,timeout=null,loadBegan=0,oldFocus=null,layoutTop=0,layoutHeight=0,displayProgress=0;
   let presentedTime=0,stageWidth=0,stageHeight=0,headerHeight=88;
+  let currentView={scale:1,lift:0,shift:0,focus:0};
   const stats={seeks:0,maxLag:0,completed:false};
   const coarse=window.matchMedia('(pointer:coarse)');
   let framedViewport=null;
@@ -169,6 +193,8 @@ export function initMotion() {
 
   function cancelGuide() {
     guideRequest++;
+    story.classList.remove('is-guided');
+    document.documentElement.classList.remove('is-guiding-story');
     if(guideHandle)cancelAnimationFrame(guideHandle);
     guideHandle=0;
     guideNative=false;guideProgressPerSecond=0;showcasePrecision=false;
@@ -187,11 +213,13 @@ export function initMotion() {
     dimensions();
     const startY=scrollY,endY=guidedStoryEnd(layoutTop,story.getBoundingClientRect().height,stage.getBoundingClientRect().height);
     if(endY<=startY)return;
-    const duration=guidedScrollDuration(endY-startY,stageHeight);
+    const duration=guidedScrollDuration(endY-startY,stageHeight,layoutHeight-stageHeight);
     guideProgressPerSecond=(endY-startY)/Math.max(1,layoutHeight-stageHeight)/(duration/1000);
     // During the explicit guided visit, use the decoder's continuous playback
     // instead of flushing it with a seek on every animation frame.
     guideNative=true;
+    story.classList.add('is-guided');
+    document.documentElement.classList.add('is-guiding-story');
     video.playbackRate=guidedMediaRate(scrollProgress(scrollY,layoutTop,layoutHeight,stageHeight),guideProgressPerSecond);
     Promise.resolve(video.play()).catch(()=>{guideNative=false;});
     if(video.requestVideoFrameCallback)videoFrameHandle=video.requestVideoFrameCallback(trackPresentedFrame);
@@ -222,7 +250,8 @@ export function initMotion() {
     if(!shouldReframe(framedViewport,next,coarse.matches))return;
     framedViewport=next;
     if(!coarse.matches) {
-      story.style.removeProperty('--story-viewport');story.style.removeProperty('--story-distance');
+      story.style.removeProperty('--story-viewport');
+      story.style.setProperty('--story-distance',`${innerHeight*(1+STORY_SCROLL_SCREENS)}px`);
       return;
     }
     // Resolve stable viewport units once, rather than re-measuring innerHeight
@@ -235,7 +264,7 @@ export function initMotion() {
     const small=probe.getBoundingClientRect().height||innerHeight;
     probe.remove();
     story.style.setProperty('--story-viewport',`${large}px`);
-    story.style.setProperty('--story-distance',`${small*(innerWidth<=600?8.8:9.6)}px`);
+    story.style.setProperty('--story-distance',`${large+small*STORY_SCROLL_SCREENS}px`);
   }
   function dimensions() {
     stabilizeViewport();
@@ -243,6 +272,7 @@ export function initMotion() {
     layoutHeight=story.offsetHeight;
     stageWidth=stage.clientWidth;stageHeight=stage.clientHeight;
     headerHeight=document.querySelector('.site-header')?.offsetHeight||88;
+    screens.resize(stageWidth,stageHeight);
   }
   function finishLoader() {
     clearTimeout(timeout);loading=false;loader.hidden=true;
@@ -257,9 +287,12 @@ export function initMotion() {
     loadStatus.textContent='Loading only the film sized for your screen.';
   }
   function showFallback(message) {
+    if(guideHandle||guideNative)cancelGuide();
     ready=false;story.classList.remove('is-ready','is-enhanced');
     stage.style.setProperty('--opening-opacity','1');stage.style.setProperty('--opening-shift','0');
     stage.style.setProperty('--scene-scale','1');stage.style.setProperty('--scene-lift','0px');
+    stage.style.setProperty('--scene-x','0px');
+    currentView={scale:1,lift:0,shift:0,focus:0};
     opening.inert=false;
     if(status)status.textContent=message;
     load.hidden=false;replay.hidden=true;
@@ -325,12 +358,15 @@ export function initMotion() {
     if(total&&received!==total)throw new Error('Movie transfer is incomplete.');
     return new Blob(downloaded,{type:'video/mp4'});
   }
+  function setStageVar(name,value) {
+    if(stage.style.getPropertyValue(name)!==value)stage.style.setProperty(name,value);
+  }
   function updateCopy(time) {
-    const projectsVisible=screens.update(time,family?.id);
+    const projectsVisible=screens.update(time,family?.id,currentView);
     const openingAlpha=1-Math.min(1,Math.max(0,(time-.55)/1.6));
-    stage.style.setProperty('--opening-opacity',openingAlpha.toFixed(3));
-    stage.style.setProperty('--opening-shift',String(-Math.min(25,time*10)));
-    opening.inert=openingAlpha<.04;
+    setStageVar('--opening-opacity',openingAlpha.toFixed(3));
+    setStageVar('--opening-shift',String(-Math.min(25,time*10)));
+    if(opening.inert!==(openingAlpha<.04))opening.inert=openingAlpha<.04;
     const name=projectsVisible?'':time<4?'':time<8?'mind':time<12?'build':time<15.5?'work':time>18.3?'return':'';
     for(const c of chapters) {
       const active=c.dataset.chapter===name;c.classList.toggle('is-active',active);
@@ -351,11 +387,12 @@ export function initMotion() {
     displayProgress=smoothTime(displayProgress,targetProgress,dt,1/100000);
     displayTime=smoothTime(displayTime,targetTime,dt);
     lastTick=now;
-    // The portrait stays untouched. During the showcase the camera brings the
-    // upper screens below the fixed navigation, without trimming a project.
-    const view=showcaseCamera(displayProgress,stageWidth,stageHeight,family?.id,headerHeight);
-    stage.style.setProperty('--scene-scale',String(view.scale));
-    stage.style.setProperty('--scene-lift',`${view.lift}px`);
+    // Pan and zoom the same film/overlay plane, anchored to the middle ERP card.
+    const view=showcaseCamera(displayProgress,stageWidth,stageHeight,family?.id,headerHeight,screens.focusBounds(family?.id));
+    currentView=view;
+    setStageVar('--scene-scale',String(view.scale));
+    setStageVar('--scene-lift',`${view.lift}px`);
+    setStageVar('--scene-x',`${view.shift}px`);
     const wanted=Math.min(LAST_FRAME,Math.round(displayTime*24)/24);
     const preciseShowcase=guideNative&&displayTime>=14.5&&displayTime<=15.85;
     // Use the same frame-safe offset as the final portrait. Otherwise a seek

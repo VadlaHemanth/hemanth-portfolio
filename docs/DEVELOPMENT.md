@@ -112,8 +112,8 @@ The site is intentionally sound-free. A local sound experiment was declined
 before publication; no audio module, audio toggle or background soundtrack ships.
 
 There is no wheel/touch interception. Scroll is native, with a sticky story and
-ordinary sections below. The project scene progresses with a small camera move;
-the original eye return has extra scroll distance.
+ordinary sections below. The camera approaches the middle Attendance ERP panel
+and withdraws once before returning through the original eye.
 
 One independently decodable H.264 rendition is selected by aspect ratio.
 The current delivery uses high-quality H.264 MP4s with bounded 12–24-frame GOPs
@@ -138,16 +138,31 @@ Mobile stage dimensions are kept stable across browser-toolbar height changes.
 Orientation changes and native fullscreen preserve the relative story position.
 Fullscreen is shown only when the browser supports the document Fullscreen API.
 
-The explicit Explore CTA guides the native scroll for roughly 22–24 seconds,
-starting immediately at a steady scroll rate. It stops on the exact final
-portrait frame while the stage still fills the viewport, not at the next work
-section. Further manual scrolling continues into the portfolio; Skip to work
-and reduced-motion navigation still go directly to the work. The separate source-time curve
-compensates for the film's uneven movement. It was calibrated offline from
-smoothed optical flow with bounds. Eye entry and exit are now 10% quicker than
-the previous curve. The guided duration compensates for those shorter intervals,
-preserving other beats and roughly three seconds of project-reading room. A symmetric camera zoom
-in and out keeps that section moving rather than adding a stationary hold.
+The explicit Explore CTA runs a shared 17.32-second score on every device.
+Its scroll distance is shorter as well, so manual scrolling does not retain
+the old long intro. It stops on the decoded final portrait frame, with the
+stage still filling the viewport. Further scrolling continues into the work;
+Skip to work and reduced-motion navigation still go directly there.
+
+The eye timing follows the original renderer's logarithmic camera path with
+bounded frame durations, rather than treating texture flicker as camera speed.
+Entry takes about 2.1 seconds and return about 1.9 seconds. Interior travel has
+a steady cadence with short blends at scene boundaries. The original 24fps
+footage is unchanged; this is not a claim of newly interpolated 60fps video.
+
+The project reveal has roughly three seconds of moving reading room. A
+steady relative zoom with short acceleration and turnaround ramps targets the
+actual centre-panel bounds. Desktop zoom reaches up to 2.65×; narrower layouts
+limit the zoom to keep the whole ERP card visible below the navigation.
+Its approach and retreat match, without a frozen plateau. Surrounding cards
+recede, and the section heading fades away instead of covering the focus.
+Off-focus links leave the tab order while the camera is close.
+
+The film and HTML covers use the same camera coordinates, but text is projected
+directly into the viewport rather than enlarged as part of a cached video layer.
+This keeps project names sharp. Geometry is cached on viewport changes; unchanged
+style values are not rewritten each frame. During the guide, the fixed header
+uses a solid dark backing instead of repeatedly blurring the moving video.
 During that explicit guided visit, native video playback follows the curve with
 a bounded changing playback rate instead of forcing a new seek on every RAF.
 The slow project window uses precise source frames so the decoder clock cannot
