@@ -138,19 +138,22 @@ Mobile stage dimensions are kept stable across browser-toolbar height changes.
 Orientation changes and native fullscreen preserve the relative story position.
 Fullscreen is shown only when the browser supports the document Fullscreen API.
 
-The explicit Explore CTA guides the native scroll for roughly 22–25 seconds,
+The explicit Explore CTA guides the native scroll for roughly 22–24 seconds,
 starting immediately at a steady scroll rate. It stops on the exact final
 portrait frame while the stage still fills the viewport, not at the next work
 section. Further manual scrolling continues into the portfolio; Skip to work
 and reduced-motion navigation still go directly to the work. The separate source-time curve
 compensates for the film's uneven movement. It was calibrated offline from
-smoothed optical flow with bounds. Eye entry and exit are slightly quicker, with
-roughly three seconds of reading room at the projects. A symmetric camera zoom
+smoothed optical flow with bounds. Eye entry and exit are now 10% quicker than
+the previous curve. The guided duration compensates for those shorter intervals,
+preserving other beats and roughly three seconds of project-reading room. A symmetric camera zoom
 in and out keeps that section moving rather than adding a stationary hold.
 During that explicit guided visit, native video playback follows the curve with
 a bounded changing playback rate instead of forcing a new seek on every RAF.
 The slow project window uses precise source frames so the decoder clock cannot
 rush past the names; the zoom camera continues moving through that interval.
+Those seeks land inside each frame, with overlays using its frame timestamp,
+so decoder rounding cannot briefly flash a title from the preceding frame.
 Manual scrolling returns to precise seek-based control immediately.
 Wheel/touch/pointer/navigation-key input cancels it immediately. It is not a
 wheel-event override or scroll lock.

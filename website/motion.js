@@ -3,14 +3,17 @@
  * interception, looping player or forced playback timer. Loading reports bytes,
  * not invented progress. Reduced motion and direct links skip the film.
  */
-import {initProjectScreens,useCoverFrame} from './project-screens.js?v=20261005-1';
-import {MOTION_POINTS,SHOWCASE_RANGE} from './motion-curve.js?v=20261005-1';
+import {initProjectScreens,useCoverFrame} from './project-screens.js?v=20261005-2';
+import {MOTION_POINTS,SHOWCASE_RANGE,GUIDED_TIME_SCALE} from './motion-curve.js?v=20261005-2';
 const browser = typeof window !== 'undefined';
 const systemMotion = browser ? window.matchMedia('(prefers-reduced-motion: reduce)') : {matches:false};
 const LAST_FRAME = 479/24;
+export function insideFrameTime(frameTime) {
+  return Math.min(LAST_FRAME,Math.max(0,frameTime))+1/96;
+}
 // Seek inside the final frame: browser time precision can round its exact
 // starting timestamp into the preceding frame (or the ended state).
-const LAST_FRAME_SEEK = LAST_FRAME+1/96;
+const LAST_FRAME_SEEK = insideFrameTime(LAST_FRAME);
 // Equalized from the actual source motion, rather than arbitrary slow/fast
 // chapters. Native scroll and the guided CTA use the same continuous curve.
 export const SCROLL_BEATS = MOTION_POINTS;
@@ -113,7 +116,8 @@ export function guidedStoryEnd(top,height,viewportHeight) {
   return Math.floor(top+Math.max(0,height-viewportHeight));
 }
 export function guidedScrollDuration(distance,viewportHeight) {
-  return clamp(Math.abs(distance)/Math.max(1,viewportHeight)*2850,5000,28500);
+  // Compensate for the shorter eye intervals so other beats keep their timing.
+  return clamp(Math.abs(distance)/Math.max(1,viewportHeight)*2850*GUIDED_TIME_SCALE,5000,28500);
 }
 export function guidedScrollPosition(start,end,progress) {
   // Responsive from the first frame; equalization belongs to the media curve.
@@ -154,7 +158,7 @@ export function initMotion() {
   const screens=initProjectScreens(stage,camera);
   const oldInert=site?.inert||false;
   let manifest=null,controller=null,blobURL=null,loading=false,ready=false,disabled=false;
-  let family=null,currentAsset=null,frameHandle=0,seekPending=false,lastTick=0,displayTime=0,targetTime=0;
+  let family=null,currentAsset=null,frameHandle=0,seekPending=false,seekFrameTime=null,lastTick=0,displayTime=0,targetTime=0;
   let requestEpoch=0,timeout=null,loadBegan=0,oldFocus=null,layoutTop=0,layoutHeight=0,displayProgress=0;
   let presentedTime=0,stageWidth=0,stageHeight=0,headerHeight=88;
   const stats={seeks:0,maxLag:0,completed:false};
@@ -204,7 +208,7 @@ export function initMotion() {
         // imprecise seek at the frame boundary.
         displayProgress=1;displayTime=targetTime=LAST_FRAME;
         if(video.currentTime!==LAST_FRAME_SEEK) {
-          seekPending=true;video.currentTime=LAST_FRAME_SEEK;stats.seeks++;
+          seekPending=true;seekFrameTime=LAST_FRAME;video.currentTime=LAST_FRAME_SEEK;stats.seeks++;
         }
         requestTick();
       }
@@ -264,7 +268,7 @@ export function initMotion() {
     finishLoader();dimensions();
   }
   function releaseVideo() {
-    video.pause();video.removeAttribute('src');video.load();seekPending=false;
+    video.pause();video.removeAttribute('src');video.load();seekPending=false;seekFrameTime=null;
     if(blobURL){URL.revokeObjectURL(blobURL);blobURL=null;}
   }
   async function selectAsset() {
@@ -354,6 +358,9 @@ export function initMotion() {
     stage.style.setProperty('--scene-lift',`${view.lift}px`);
     const wanted=Math.min(LAST_FRAME,Math.round(displayTime*24)/24);
     const preciseShowcase=guideNative&&displayTime>=14.5&&displayTime<=15.85;
+    // Use the same frame-safe offset as the final portrait. Otherwise a seek
+    // can decode the previous frame and briefly hide a newly revealed title.
+    const seekAt=preciseShowcase?insideFrameTime(wanted):wanted;
     if(guideNative) {
       const rate=guidedMediaRate(displayProgress,guideProgressPerSecond);
       if(Math.abs(video.playbackRate-rate)>.025)video.playbackRate=rate;
@@ -368,8 +375,8 @@ export function initMotion() {
       }
       if(!video.requestVideoFrameCallback)presentedTime=video.currentTime;
     }
-    if(!seekPending&&Math.abs(video.currentTime-wanted)>=(guideNative&&!preciseShowcase ? .45 : 1/48)) {
-      seekPending=true;video.currentTime=Math.min(LAST_FRAME,wanted);stats.seeks++;
+    if(!seekPending&&Math.abs(video.currentTime-seekAt)>=(guideNative&&!preciseShowcase ? .45 : 1/48)) {
+      seekPending=true;seekFrameTime=preciseShowcase?wanted:null;video.currentTime=seekAt;stats.seeks++;
     }
     stats.maxLag=Math.max(stats.maxLag,Math.abs(video.currentTime-targetTime));
     updateCopy(presentedTime);
@@ -450,7 +457,10 @@ export function initMotion() {
     if(['Escape','Tab','ArrowDown','ArrowUp','ArrowLeft','ArrowRight','PageDown','PageUp','Home','End',' '].includes(event.key))cancelGuide();
   });
   replay.addEventListener('click',()=>story.scrollIntoView({behavior:reduced()?'instant':'smooth',block:'start'}));
-  video.addEventListener('seeked',()=>{seekPending=false;presentedTime=video.currentTime;updateCopy(presentedTime);requestTick();});
+  video.addEventListener('seeked',()=>{
+    seekPending=false;presentedTime=seekFrameTime??video.currentTime;seekFrameTime=null;
+    updateCopy(presentedTime);requestTick();
+  });
   video.addEventListener('error',()=>{if(ready){releaseVideo();showFallback('Film playback unavailable. All portfolio sections remain accessible.');}});
   window.addEventListener('scroll',requestTick,{passive:true});
   let resizeTimer;

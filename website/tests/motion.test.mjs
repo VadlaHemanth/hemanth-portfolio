@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chooseMotionFamily, chooseMotionVariant, chooseCapableVariant, scrollProgress, progressTime, smoothTime, SCROLL_BEATS, showcaseFocus, showcaseCamera, loadingBudget, shouldReframe, guidedStoryEnd, guidedScrollDuration, guidedScrollPosition, guidedMediaRate } from '../motion.js';
-import {SHOWCASE_RANGE} from '../motion-curve.js';
+import { chooseMotionFamily, chooseMotionVariant, chooseCapableVariant, scrollProgress, progressTime, smoothTime, SCROLL_BEATS, showcaseFocus, showcaseCamera, loadingBudget, shouldReframe, guidedStoryEnd, guidedScrollDuration, guidedScrollPosition, guidedMediaRate, insideFrameTime } from '../motion.js';
+import {SHOWCASE_RANGE,GUIDED_TIME_SCALE} from '../motion-curve.js';
 import {planeMatrix, SCREEN_PROJECTS} from '../project-screens.js';
 
 const variants = [
@@ -79,6 +79,17 @@ test('fractional story endpoints round inward without skipping the last frame',(
   assert.equal(guidedStoryEnd(100,500,600),100);
 });
 
+test('precise seeks remain inside the intended frame after browser time rounding',()=>{
+  for(let frame=0;frame<480;frame++) {
+    const target=insideFrameTime(frame/24);
+    for(const rounded of [Math.round(target*1e6)/1e6,Math.floor(target*1e6)/1e6]) {
+      assert.equal(Math.floor(rounded*24),frame,'do not decode the preceding frame');
+      assert(rounded<20,'last portrait stays before the ended state');
+    }
+  }
+  assert.equal(insideFrameTime(20),19.96875);
+});
+
 test('scroll timing smoothing never overshoots either direction', () => {
   for(const [current,target] of [[1,10],[10,1]]) {
     const next=smoothTime(current,target,16);
@@ -99,14 +110,35 @@ test('eye passes are quicker while the moving project reveal has readable breath
   assert.ok(progressTime(.04)>1);
   const atFrame=frame=>SCROLL_BEATS.find(([,time])=>Math.abs(time-frame/24)<1e-8)?.[0];
   const entry=atFrame(96)-atFrame(22),exit=atFrame(471)-atFrame(432);
-  assert.ok(entry*27>=4.2&&entry*27<=4.5,'entry shortened from the earlier 5.2 seconds');
-  assert.ok(exit*27>=3.8&&exit*27<=4.15,'return is slightly brisker than entry');
+  const reference=27*GUIDED_TIME_SCALE;
+  assert.ok(entry*reference>=3.9&&entry*reference<=4.1,'eye entry is slightly quicker');
+  assert.ok(exit*reference>=3.5&&exit*reference<=3.75,'eye return is slightly quicker');
   assert.ok(exit<entry);
   assert.ok(atFrame(22)<.015,'near-static source opening is not stretched');
-  const reading=(atFrame(374)-atFrame(361))*27;
+  const reading=(atFrame(374)-atFrame(361))*reference;
   assert.ok(reading>=2.8&&reading<=3.5,'readable project names without a repeated stationary page');
   assert.ok(progressTime(.64)>progressTime(.61));
   assert.ok(progressTime(.67)>progressTime(.64));
+});
+
+test('only the eye passes are 10% faster; other guided viewing intervals are preserved',()=>{
+  const atFrame=frame=>SCROLL_BEATS.find(([,time])=>Math.round(time*24)===frame)[0];
+  const duration=guidedScrollDuration(8.6*768,768),beforeDuration=8.6*2850;
+  for(const [start,end,beforeStart,beforeEnd,speed] of [
+    [0,22,0,.01110239,1],
+    [22,96,.01110239,.17390675,1.1],
+    [96,240,.17390675,.35930821,1],
+    [240,324,.35930821,.48898045,1],
+    [324,360,.48898045,.53616622,1],
+    [360,374,.53616622,.65669191,1],
+    [374,432,.65669191,.84441041,1],
+    [432,471,.84441041,.99256591,1.1],
+    [471,479,.99256591,1,1],
+  ]) {
+    const before=(beforeEnd-beforeStart)*beforeDuration;
+    const after=(atFrame(end)-atFrame(start))*duration;
+    assert(Math.abs(before/after-speed)<.00002,`${start}–${end}: only eye viewing time changes`);
+  }
 });
 
 test('project camera stays aligned with the retimed showcase, then withdraws once', () => {
@@ -178,8 +210,8 @@ test('mobile browser toolbar movement does not reframe or rescale the scroll ran
 });
 
 test('hero guided visit takes a readable route rather than a fast default anchor jump', () => {
-  assert.ok(guidedScrollDuration(6800,768)>=25000);
-  assert.ok(guidedScrollDuration(6800,768)<=30000);
+  assert.ok(guidedScrollDuration(6800,768)>=24000);
+  assert.ok(guidedScrollDuration(6800,768)<=27000);
   assert.equal(guidedScrollDuration(0,768),5000);
   assert.equal(guidedScrollPosition(0,6800,0),0);
   assert.equal(guidedScrollPosition(0,6800,1),6800);
