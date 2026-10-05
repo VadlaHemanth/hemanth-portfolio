@@ -3,11 +3,14 @@
  * interception, looping player or forced playback timer. Loading reports bytes,
  * not invented progress. Reduced motion and direct links skip the film.
  */
-import {initProjectScreens,useCoverFrame} from './project-screens.js?v=20261004-3';
-import {MOTION_POINTS,SHOWCASE_RANGE} from './motion-curve.js?v=20261004-3';
+import {initProjectScreens,useCoverFrame} from './project-screens.js?v=20261005-1';
+import {MOTION_POINTS,SHOWCASE_RANGE} from './motion-curve.js?v=20261005-1';
 const browser = typeof window !== 'undefined';
 const systemMotion = browser ? window.matchMedia('(prefers-reduced-motion: reduce)') : {matches:false};
 const LAST_FRAME = 479/24;
+// Seek inside the final frame: browser time precision can round its exact
+// starting timestamp into the preceding frame (or the ended state).
+const LAST_FRAME_SEEK = LAST_FRAME+1/96;
 // Equalized from the actual source motion, rather than arbitrary slow/fast
 // chapters. Native scroll and the guided CTA use the same continuous curve.
 export const SCROLL_BEATS = MOTION_POINTS;
@@ -104,6 +107,11 @@ export async function chooseCapableVariant(variants,width,height,dpr,connection,
 export function scrollProgress(scrollY,top,height,viewportHeight) {
   return Math.min(1,Math.max(0,(scrollY-top)/Math.max(1,height-viewportHeight)));
 }
+export function guidedStoryEnd(top,height,viewportHeight) {
+  // Stop at the last fully pinned viewport, not the next section's heading.
+  // Round inward so fractional layout pixels cannot reveal following content.
+  return Math.floor(top+Math.max(0,height-viewportHeight));
+}
 export function guidedScrollDuration(distance,viewportHeight) {
   return clamp(Math.abs(distance)/Math.max(1,viewportHeight)*2850,5000,28500);
 }
@@ -169,11 +177,11 @@ export function initMotion() {
     presentedTime=metadata.mediaTime;updateCopy(presentedTime);
     videoFrameHandle=video.requestVideoFrameCallback(trackPresentedFrame);
   }
-  function guideToWork() {
+  function guideToPortrait() {
     cancelGuide();
     if(!ready||reduced())return;
-    const work=document.getElementById('work');
-    const startY=scrollY,endY=work.getBoundingClientRect().top+scrollY-headerHeight-20;
+    dimensions();
+    const startY=scrollY,endY=guidedStoryEnd(layoutTop,story.getBoundingClientRect().height,stage.getBoundingClientRect().height);
     if(endY<=startY)return;
     const duration=guidedScrollDuration(endY-startY,stageHeight);
     guideProgressPerSecond=(endY-startY)/Math.max(1,layoutHeight-stageHeight)/(duration/1000);
@@ -190,7 +198,16 @@ export function initMotion() {
       const p=clamp((now-began)/duration);
       window.scrollTo({top:guidedScrollPosition(startY,endY,p),behavior:'instant'});
       if(p<1)guideHandle=requestAnimationFrame(advance);
-      else {cancelGuide();requestTick();}
+      else {
+        cancelGuide();
+        // Freeze the decoded final portrait, not the next section or an
+        // imprecise seek at the frame boundary.
+        displayProgress=1;displayTime=targetTime=LAST_FRAME;
+        if(video.currentTime!==LAST_FRAME_SEEK) {
+          seekPending=true;video.currentTime=LAST_FRAME_SEEK;stats.seeks++;
+        }
+        requestTick();
+      }
     }
     guideHandle=requestAnimationFrame(advance);
   }
@@ -420,7 +437,7 @@ export function initMotion() {
     const request=++guideRequest;
     if(!ready)await start({manual:true});
     if(request!==guideRequest)return;
-    if(ready)guideToWork();
+    if(ready)guideToPortrait();
     else document.getElementById('work')?.scrollIntoView({behavior:'instant',block:'start'});
   });
   window.addEventListener('wheel',cancelGuide,{passive:true});

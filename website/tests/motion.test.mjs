@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chooseMotionFamily, chooseMotionVariant, chooseCapableVariant, scrollProgress, progressTime, smoothTime, SCROLL_BEATS, showcaseFocus, showcaseCamera, loadingBudget, shouldReframe, guidedScrollDuration, guidedScrollPosition, guidedMediaRate } from '../motion.js';
+import { chooseMotionFamily, chooseMotionVariant, chooseCapableVariant, scrollProgress, progressTime, smoothTime, SCROLL_BEATS, showcaseFocus, showcaseCamera, loadingBudget, shouldReframe, guidedStoryEnd, guidedScrollDuration, guidedScrollPosition, guidedMediaRate } from '../motion.js';
 import {SHOWCASE_RANGE} from '../motion-curve.js';
 import {planeMatrix, SCREEN_PROJECTS} from '../project-screens.js';
 
@@ -54,6 +54,29 @@ test('scroll progress is bounded, reversible, and finishes before following cont
   assert.equal(scrollProgress(8000,0,6000,1000),1);
   assert.equal(scrollProgress(-500,0,6000,1000),0);
   assert.equal(progressTime(1),479/24);
+});
+
+test('guided visit ends on the full final portrait, before the work section enters',()=>{
+  for(const [top,height,viewport] of [[0,5760,600],[0,10368,1080],[0,7427,844],[120,9830,1024]]) {
+    const end=guidedStoryEnd(top,height,viewport);
+    assert.equal(scrollProgress(end,top,height,viewport),1);
+    assert.equal(top+height-end,viewport,'following section stays below the viewport');
+    assert.equal(progressTime(scrollProgress(end,top,height,viewport)),479/24);
+    const oldWorkTarget=top+height-108;
+    assert(end<oldWorkTarget,'do not scroll past the final photo to align the work heading');
+    const oldRate=(oldWorkTarget-top)/guidedScrollDuration(oldWorkTarget-top,viewport);
+    const newRate=(end-top)/guidedScrollDuration(end-top,viewport);
+    assert(Math.abs(oldRate-newRate)<1e-9,'stop earlier without changing the journey speed');
+  }
+});
+
+test('fractional story endpoints round inward without skipping the last frame',()=>{
+  const top=13.4,height=7427.2,viewport=844;
+  const end=guidedStoryEnd(top,height,viewport);
+  assert.equal(end,6596);
+  assert(top+height-end>=viewport);
+  assert.equal(Math.round(progressTime(scrollProgress(end,top,height,viewport))*24),479);
+  assert.equal(guidedStoryEnd(100,500,600),100);
 });
 
 test('scroll timing smoothing never overshoots either direction', () => {

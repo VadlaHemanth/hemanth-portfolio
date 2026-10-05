@@ -138,8 +138,11 @@ Mobile stage dimensions are kept stable across browser-toolbar height changes.
 Orientation changes and native fullscreen preserve the relative story position.
 Fullscreen is shown only when the browser supports the document Fullscreen API.
 
-The explicit Explore CTA guides the native scroll for roughly 25–27 seconds,
-starting immediately at a steady scroll rate. The separate source-time curve
+The explicit Explore CTA guides the native scroll for roughly 22–25 seconds,
+starting immediately at a steady scroll rate. It stops on the exact final
+portrait frame while the stage still fills the viewport, not at the next work
+section. Further manual scrolling continues into the portfolio; Skip to work
+and reduced-motion navigation still go directly to the work. The separate source-time curve
 compensates for the film's uneven movement. It was calibrated offline from
 smoothed optical flow with bounds. Eye entry and exit are slightly quicker, with
 roughly three seconds of reading room at the projects. A symmetric camera zoom
