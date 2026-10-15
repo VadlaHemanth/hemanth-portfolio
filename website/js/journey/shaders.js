@@ -57,6 +57,11 @@ uniform mat3 uM1;
 uniform vec3 uC1;
 uniform float uTexel1;
 uniform float uHasL1;
+uniform sampler2D uL1b;
+uniform mat3 uM1b;
+uniform vec3 uC1b;
+uniform float uTexel1b;
+uniform float uHasL1b;
 uniform sampler2D uL2;
 uniform mat3 uM2;
 uniform vec3 uC2;
@@ -71,6 +76,7 @@ uniform float uTime;
 uniform float uFlow;
 uniform float uExposure;
 uniform float uSweep;
+uniform float uShimmer;
 uniform vec4 uEdges;
 
 vec3 sampleStack(vec2 P) {
@@ -89,6 +95,14 @@ vec3 sampleStack(vec2 P) {
     float when = smoothstep(0.45, 0.95, density / uTexel0);
     float where = 1.0 - smoothstep(uC1.z * 0.58, uC1.z * 0.94, length(P - uC1.xy));
     col = mix(col, texture(uL1, uv1).rgb, inside * when * where);
+  }
+  if (uHasL1b > 0.5) {
+    // The other eye gets the same treatment, so both stay equally sharp mid-zoom.
+    vec2 uv1b = (uM1b * vec3(P, 1.0)).xy;
+    float inside = step(0.0, uv1b.x) * step(uv1b.x, 1.0) * step(0.0, uv1b.y) * step(uv1b.y, 1.0);
+    float when = smoothstep(0.45, 0.95, density / uTexel0);
+    float where = 1.0 - smoothstep(uC1b.z * 0.58, uC1b.z * 0.94, length(P - uC1b.xy));
+    col = mix(col, texture(uL1b, uv1b).rgb, inside * when * where);
   }
   if (uHasL2 > 0.5) {
     vec2 uv2 = (uM2 * vec3(P, 1.0)).xy;
@@ -145,6 +159,12 @@ void main() {
   col *= mix(1.0, smoothstep(rp * 0.985, rp * 1.04, r), smoothstep(0.05, 0.35, uDilation));
   col *= mix(1.0, 0.0, smoothstep(0.0, 0.7, uPortal));
 
+  // The blue rim light breathes a little while the portrait rests (the face itself is untouched).
+  if (uShimmer > 0.0) {
+    float blueness = smoothstep(0.04, 0.22, col.b - max(col.r, col.g));
+    float wave = 0.5 + 0.5 * sin(uTime * 1.3 + P.y * 0.012);
+    col += col * blueness * wave * 0.35 * uShimmer;
+  }
   // Hero light-in: exposure ramps up and a soft band of light crosses the face once.
   float band = exp(-pow((vUv.x * 1.2 - uSweep) * 3.2, 2.0)) * (1.0 - smoothstep(0.85, 1.0, uExposure));
   col *= uExposure;

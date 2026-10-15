@@ -129,6 +129,12 @@ export class JourneyRenderer {
       gl.uniform3f(u.uC1, p.c1[0], p.c1[1], p.c1[2]);
       gl.uniform1f(u.uTexel1, p.texel1);
       gl.uniform1f(u.uHasL1, this.textures.L1 ? 1 : 0);
+      bindTexture(gl, 3, this.texture("L1b"));
+      gl.uniform1i(u.uL1b, 3);
+      gl.uniformMatrix3fv(u.uM1b, false, p.m1b);
+      gl.uniform3f(u.uC1b, p.c1b[0], p.c1b[1], p.c1b[2]);
+      gl.uniform1f(u.uTexel1b, p.texel1b);
+      gl.uniform1f(u.uHasL1b, this.textures.L1b ? 1 : 0);
       bindTexture(gl, 2, this.texture("L2"));
       gl.uniform1i(u.uL2, 2);
       gl.uniformMatrix3fv(u.uM2, false, p.m2);
@@ -144,6 +150,7 @@ export class JourneyRenderer {
       gl.uniform1f(u.uFlow, f.flow);
       gl.uniform1f(u.uExposure, p.exposure);
       gl.uniform1f(u.uSweep, p.sweep);
+      gl.uniform1f(u.uShimmer, p.shimmer ?? 0);
       gl.uniform4f(u.uEdges, p.edges[0], p.edges[1], p.edges[2], p.edges[3]);
       this.fullscreen();
     }

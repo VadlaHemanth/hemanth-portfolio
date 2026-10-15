@@ -112,7 +112,7 @@ test("constrained devices and connections get the light tier", () => {
 test("every manifest tier lists real files within the size budget", () => {
   for (const [name, tier] of Object.entries(manifest.tiers)) {
     let total = 0;
-    for (const key of ["L0", "L1", "L2", "neural", "circuit", "core"]) {
+    for (const key of ["L0", "L1", "L1b", "L2", "neural", "circuit", "core"]) {
       assert.ok(tier[key]?.src, `${name}.${key}`);
       const bytes = readFileSync(new URL(`../${tier[key].src.replace("./", "")}`, import.meta.url)).length;
       assert.equal(bytes, tier[key].bytes, `${name}.${key} size`);

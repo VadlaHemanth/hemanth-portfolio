@@ -14,7 +14,7 @@ test('journey media is small, content-addressed and complete for every tier', as
   const budgets={high:4*MiB, mid:3.5*MiB, low:2.5*MiB};
   for (const [name, tier] of Object.entries(journey.tiers)) {
     let total=0;
-    for (const key of ['L0','L1','L2','neural','circuit','core']) {
+    for (const key of ['L0','L1','L1b','L2','neural','circuit','core']) {
       const file=tier[key];
       assert.match(file.src,new RegExp(`^\\./assets/journey/${name}/${key}\\.[a-f0-9]{10}\\.webp$`),`${name}.${key}: hashed name`);
       const bytes=(await stat(path.join(website,file.src))).size;

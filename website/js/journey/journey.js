@@ -113,9 +113,13 @@ export function initJourney() {
     const levels = manifest.levels;
     const m1 = levels.L1 ? affineToMat3(levels.L1.affine) : new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
     const m2 = levels.L2 ? affineToMat3(levels.L2.affine) : new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+    const m1b = levels.L1b ? affineToMat3(levels.L1b.affine) : new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
     return {
       m1,
       m2,
+      m1b,
+      c1b: levels.L1b ? [...levels.L1b.center, levels.L1b.radius] : [0, 0, 0],
+      texel1b: tierFiles.L1b?.texel || 1,
       c1: levels.L1 ? [...levels.L1.center, levels.L1.radius] : [0, 0, 0],
       c2: levels.L2 ? [...levels.L2.center, levels.L2.radius] : [0, 0, 0],
       texel0: tierFiles.L0?.texel || 1,
@@ -173,7 +177,10 @@ export function initJourney() {
     const sweep = lerp(-0.4, 1.7, clamp(intro / 2.1));
     let windowCircle = [frameCenter[0], frameCenter[1], 1e5];
     if (state.portal < 0.999) {
-      const cam = zoomCamera(state.zoomLog, width, svh, plate, timeline.zoomLen);
+      // A slow breath while the visitor rests on the portrait (fades out as the dive begins).
+      const rest = Math.max(state.hero, state.final) * (1 - smoothstep(0, 0.2, state.zoomLog));
+      const breath = rest * 0.0045 * Math.sin(time * (Math.PI * 2 / 5.5));
+      const cam = zoomCamera(state.zoomLog + breath, width, svh, plate, timeline.zoomLen);
       const pupilR = plate.pupilRadius * (1 + 0.55 * state.dilation) * cam.sigma;
       windowCircle = [cam.pupil[0], cam.pupil[1], state.window > 0 ? pupilR * smoothstep(0, 1, state.window * 1.4) : 0];
       frameCenter[0] = cam.pupil[0];
@@ -190,6 +197,7 @@ export function initJourney() {
         portal: state.portal,
         exposure,
         sweep,
+        shimmer: Math.max(state.hero, state.final),
         edges: plate.edges,
         ...planes,
       };
@@ -370,7 +378,7 @@ export function initJourney() {
         memory: navigator.deviceMemory, cores: navigator.hardwareConcurrency, connection});
       const tier = manifest.tiers[tierName] || manifest.tiers.mid;
       root.dataset.tier = tierName;
-      const order = ["L0", "L1", "L2", "neural", "circuit", "core"].filter((k) => tier[k]);
+      const order = ["L0", "L1", "L2", "L1b", "neural", "circuit", "core"].filter((k) => tier[k]);
       const files = order.map((key) => ({key, src: tier[key].src, bytes: tier[key].bytes}));
       renderer = new JourneyRenderer(context, {shardCount: coarse ? 700 : 1400});
       planes = planeUniforms(tier);
