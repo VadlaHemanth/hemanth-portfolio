@@ -39,12 +39,12 @@
   },
   "L2": {
    "affine": [
-    0.012498560435631599,
-    -1.7223555195e-05,
-    -8.135749574165667,
-    2.9875401336000004e-06,
-    0.012441226196546399,
-    -4.937906026820906
+    0.012494086188711602,
+    9.200151701399999e-06,
+    -8.144003774929201,
+    1.0506172512e-05,
+    0.0124613901982812,
+    -4.950238923491478
    ],
    "center": [
     692,
@@ -68,20 +68,20 @@
    },
    "L2": {
     "src": "./assets/journey/high/L2.webp",
-    "bytes": 193026,
-    "texel": 15.673194786282025
+    "bytes": 226688,
+    "texel": 15.66758408064435
    },
    "neural": {
     "src": "./assets/journey/high/neural.webp",
-    "bytes": 351558
+    "bytes": 372610
    },
    "circuit": {
     "src": "./assets/journey/high/circuit.webp",
-    "bytes": 125708
+    "bytes": 321850
    },
    "core": {
     "src": "./assets/journey/high/core.webp",
-    "bytes": 9738
+    "bytes": 202138
    }
   },
   "mid": {
@@ -97,20 +97,20 @@
    },
    "L2": {
     "src": "./assets/journey/mid/L2.webp",
-    "bytes": 193026,
-    "texel": 15.673194786282025
+    "bytes": 226688,
+    "texel": 15.66758408064435
    },
    "neural": {
     "src": "./assets/journey/mid/neural.webp",
-    "bytes": 351558
+    "bytes": 372610
    },
    "circuit": {
     "src": "./assets/journey/mid/circuit.webp",
-    "bytes": 125708
+    "bytes": 321850
    },
    "core": {
     "src": "./assets/journey/mid/core.webp",
-    "bytes": 9738
+    "bytes": 156026
    }
   },
   "low": {
@@ -126,20 +126,20 @@
    },
    "L2": {
     "src": "./assets/journey/low/L2.webp",
-    "bytes": 148336,
-    "texel": 12.798525886086757
+    "bytes": 178156,
+    "texel": 12.79394425724068
    },
    "neural": {
     "src": "./assets/journey/low/neural.webp",
-    "bytes": 194894
+    "bytes": 193654
    },
    "circuit": {
     "src": "./assets/journey/low/circuit.webp",
-    "bytes": 77166
+    "bytes": 176520
    },
    "core": {
     "src": "./assets/journey/low/core.webp",
-    "bytes": 6252
+    "bytes": 101192
    }
   }
  }

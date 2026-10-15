@@ -160,6 +160,7 @@ export class JourneyRenderer {
       gl.uniform1f(u.uCoreDist, t.coreDist);
       gl.uniform1f(u.uCoreSize, t.coreSize);
       gl.uniform1f(u.uReveal, t.reveal);
+      gl.uniform3f(u.uWindow, t.window[0], t.window[1], t.window[2]);
       gl.uniform1f(u.uTime, f.time);
       gl.uniform1f(u.uSpeed, f.speed);
       gl.uniform1f(u.uFlash, t.flash);
@@ -196,7 +197,22 @@ export class JourneyRenderer {
     }
     gl.disable(gl.BLEND);
 
-    // Bloom pyramid.
+    // Bloom pyramid (skipped in eco mode).
+    if (f.bloomStrength > 0) {
+      this.renderBloom(f);
+      this.bloomCleared = false;
+    } else if (!this.bloomCleared) {
+      for (const t of this.bloom) {
+        bindTarget(gl, t);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+      }
+      this.bloomCleared = true;
+    }
+    this.compositePass(f);
+  }
+
+  renderBloom(f) {
+    const gl = this.gl;
     const prefilter = this.use("prefilter");
     bindTarget(gl, this.bloom[0]);
     bindTexture(gl, 0, this.scene.texture);
@@ -223,7 +239,10 @@ export class JourneyRenderer {
       this.fullscreen();
     }
     gl.disable(gl.BLEND);
+  }
 
+  compositePass(f) {
+    const gl = this.gl;
     const c = this.use("composite");
     bindTarget(gl, null, this.width, this.height);
     bindTexture(gl, 0, this.scene.texture);

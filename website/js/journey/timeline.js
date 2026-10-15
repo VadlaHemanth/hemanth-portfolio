@@ -28,7 +28,7 @@ export const easeInOut = (t) => {
 const lerp = (a, b, t) => a + (b - a) * t;
 
 /* Fixed chapter lengths in visual units. The zoom length depends on the screen. */
-const PORTAL = 0.8;
+const PORTAL = 0.45;
 const MIND = 4.0;
 const BREAK = 2.4;
 /* The machine chapter cruises toward the core at flight speed, then arrives (log-slowing). */
@@ -39,10 +39,11 @@ const MIND_Z = MIND * TUNNEL_Z_PER_UNIT;
 const BREAK_Z = BREAK * TUNNEL_Z_PER_UNIT;
 /** Distance to the core when the machine chapter begins. */
 const CORE_START = TUNNEL_Z_PER_UNIT * (MACHINE_CRUISE + 1);
-const CORE_END = TUNNEL_Z_PER_UNIT * Math.exp(-MACHINE_ARRIVE);
+/** Arrival eases out in log space, from flight speed to rest at the core. */
+const CORE_END = TUNNEL_Z_PER_UNIT * Math.exp(-MACHINE_ARRIVE / 2);
 export const CORE_DEPTH = MIND_Z + BREAK_Z + CORE_START;
 /** The circuit passage ends just in front of the processor core. */
-export const CHAMBER_DEPTH = CORE_DEPTH - 0.35;
+export const CHAMBER_DEPTH = CORE_DEPTH - 0.2;
 
 /** The five passing thoughts in the neural passage (centres in mind-chapter time). */
 export const THOUGHTS = Object.freeze([
@@ -88,7 +89,7 @@ export function zoomCamera(zoomLog, width, height, plate, length) {
   const hero = heroFraming(width, height, plate);
   const sigma = hero.sigma * Math.exp(zoomLog);
   // The pupil glides to the centre early in the dive, while the eye is still small.
-  const glide = smoothstep(0, 0.6, zoomLog / length);
+  const glide = smoothstep(0, 0.72, zoomLog / length);
   const pupil = [lerp(hero.pupil[0], width / 2, glide), lerp(hero.pupil[1], height / 2, glide)];
   return {sigma, pupil};
 }
@@ -106,7 +107,7 @@ function chapterList(zoomLen) {
     {id: "burst", len: 1.6, speed: 1},
     {id: "assemble", len: 1.25, speed: 1},
     {id: "focus", len: 0.9, speed: 0.85},
-    {id: "hold", len: 0.5, speed: 0.24},
+    {id: "hold", len: 1.2, speed: 0.34},
     {id: "release", len: 0.9, speed: 0.85},
     {id: "collapse", len: 1.15, speed: 1.15},
   ].map((c) => ({...c, phase: "show"}));
@@ -184,7 +185,11 @@ export function createTimeline(width, height, plate) {
     return (lo + (span > 0 ? (s - scrollAt[lo]) / span : 0)) * dv;
   }
 
-  const ctx = {width, height, plate, zoomLen};
+  const ctx = {width, height, plate, zoomLen, showProgress: 0};
+
+  const showStart = chapters.find((c) => c.phase === "show").start;
+  const showEnd = chapters.filter((c) => c.phase === "show").at(-1);
+  const showLen = showEnd.start + showEnd.len - showStart;
 
   function stateAt(scroll) {
     const v = visualAt(scroll);
@@ -192,6 +197,7 @@ export function createTimeline(width, height, plate) {
     if (index < 0) index = chapters.length - 1;
     const chapter = chapters[index];
     const t = clamp((v - chapter.start) / chapter.len);
+    ctx.showProgress = clamp((v - showStart) / showLen);
     return chapterState(chapter, t, ctx, v / visualTotal);
   }
 
@@ -208,6 +214,8 @@ function baseState() {
     dilation: 0,
     irisFx: 0,
     portal: 0,
+    window: 0,
+    entry: 0,
     tunnel: 0,
     z: 0,
     morph: 0,
@@ -235,25 +243,44 @@ function travel(id, t, ctx, s) {
     const iris = plate.irisRadius * sigma / (Math.min(width, height) / 2);
     s.irisFx = smoothstep(0.32, 1.35, iris);
     s.dilation = smoothstep(0.5, 2.2, iris);
+    // The opening pupil becomes a window: the neural passage is already visible inside it.
+    s.window = smoothstep(0.55, 0.8, t);
+    s.entry = 0.6 * s.window;
+    if (s.window > 0) s.tunnel = 1;
+    // Flight speed inside the window eases up from rest to the passage's cruising speed.
+    const windowUnits = 0.45 * zoomLen;
+    const u = Math.max(0, t - 0.55) * zoomLen;
+    const zEnd = -PORTAL * TUNNEL_Z_PER_UNIT;
+    s.z = zEnd - (TUNNEL_Z_PER_UNIT * windowUnits) / 3 + (TUNNEL_Z_PER_UNIT * u ** 3) / (3 * windowUnits ** 2);
   } else if (id === "portal") {
     s.zoomLog = zoomLen + t * PORTAL;
     s.irisFx = 1;
     s.dilation = 1;
+    s.window = 1;
+    s.entry = 0.6 + 0.4 * t;
     s.portal = smoothstep(0, 1, t);
     s.tunnel = 1;
     s.z = (t - 1) * PORTAL * TUNNEL_Z_PER_UNIT;
   } else if (id === "mind") {
     s.zoomLog = zoomLen + PORTAL;
     s.portal = 1;
+    s.window = 1;
+    s.entry = 1;
     s.tunnel = 1;
     s.z = t * MIND_Z;
   } else if (id === "break") {
+    s.zoomLog = zoomLen + PORTAL;
     s.portal = 1;
+    s.window = 1;
+    s.entry = 1;
     s.tunnel = 1;
     s.z = MIND_Z + t * BREAK_Z;
     s.morph = t;
   } else if (id === "machine") {
+    s.zoomLog = zoomLen + PORTAL;
     s.portal = 1;
+    s.window = 1;
+    s.entry = 1;
     s.tunnel = 1;
     s.morph = 1;
     const u = t * MACHINE;
@@ -261,7 +288,8 @@ function travel(id, t, ctx, s) {
       s.z = MIND_Z + BREAK_Z + u * TUNNEL_Z_PER_UNIT;
       s.core = CORE_DEPTH - s.z;
     } else {
-      s.core = TUNNEL_Z_PER_UNIT * Math.exp(-(u - MACHINE_CRUISE));
+      const w = (u - MACHINE_CRUISE) / MACHINE_ARRIVE;
+      s.core = TUNNEL_Z_PER_UNIT * Math.exp(-(MACHINE_ARRIVE / 2) * (2 * w - w * w));
       s.z = CORE_DEPTH - s.core;
     }
   }
@@ -293,8 +321,9 @@ function chapterState(chapter, t, ctx, progress) {
   }
   if (chapter.phase === "show") {
     travel("machine", 1, ctx, s);
-    const push = {burst: 0.06, assemble: 0.1, focus: 0.14, hold: 0.18, release: 0.2, collapse: 0.22}[chapter.id] || 0;
-    s.core = CORE_END * Math.exp(-push);
+    // The camera never freezes: it keeps creeping toward the core through the whole show.
+    s.core = CORE_END * Math.exp(-0.24 * ctx.showProgress);
+    s.z = CORE_DEPTH - s.core;
     s.burst = chapter.id === "burst" ? t : 1;
     s.assemble = chapter.id === "burst" ? 0 : chapter.id === "assemble" ? t : 1;
     if (chapter.id === "focus") s.focus = easeInOut(t);
@@ -311,6 +340,11 @@ function chapterState(chapter, t, ctx, progress) {
   }
   if (chapter.phase === "twist") {
     travel(chapter.id, 1 - t, ctx, s);
+    if (chapter.id === "machine") {
+      // Leave from where the show left the camera, then join the return path.
+      s.core *= Math.exp(-0.24 * (1 - smoothstep(0, 0.4, t)));
+      s.z = CORE_DEPTH - s.core;
+    }
     s.collapse = 1;
     s.burst = 1;
     s.assemble = 1;

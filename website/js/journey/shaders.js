@@ -162,6 +162,7 @@ uniform float uChamberDepth;
 uniform float uCoreDist;
 uniform float uCoreSize;
 uniform float uReveal;
+uniform vec3 uWindow;
 uniform float uTime;
 uniform float uSpeed;
 uniform float uFlash;
@@ -207,7 +208,9 @@ void main() {
   vec3 neural = vec3(0.0);
   vec3 circuit = vec3(0.0);
   if (uMorph < 0.999) neural = seamless(uNeural, vec2(a * 3.0, depth / 3.2), vec2(aAlt * 3.0, depth / 3.2));
-  if (uMorph > 0.001) circuit = seamless(uCircuit, vec2(a * 4.0, depth / 2.1), vec2(aAlt * 4.0, depth / 2.1));
+  // Circuit traces run along the passage, so pack their cross-features densely enough
+  // that flight reads as fast here as it does through the neural tissue.
+  if (uMorph > 0.001) circuit = seamless(uCircuit, vec2(a * 5.0, depth / 1.25), vec2(aAlt * 5.0, depth / 1.25));
 
   // Neural pathways straighten into traces: the boundary runs toward the camera.
   float m = 0.0;
@@ -228,19 +231,24 @@ void main() {
   vec3 col = base * fog * mix(1.0, 1.25, m);
 
   // Walls end where the chamber around the processor core begins.
-  float wall = 1.0 - smoothstep(uChamberDepth - 0.9, uChamberDepth + 0.25, depth);
+  float wall = 1.0 - smoothstep(uChamberDepth - 1.1, uChamberDepth + 0.15, depth);
   col *= wall;
 
-  // Processor core at the end of the passage.
+  // Processor core at the end of the passage, mounted on a circuit board that closes the tunnel.
   float coreR = uCoreSize / max(uCoreDist, 1e-3);
+  float chamberLight = smoothstep(uChamberDepth - 5.0, uChamberDepth - 0.5, uZ + 2.0);
+  vec2 board = p * uCoreDist;
+  vec3 endWall = texture(uCircuit, board * 0.62 + vec2(0.5, 0.31)).rgb;
+  float boardLight = 0.28 + 1.3 * exp(-length(board) / 0.75);
+  endWall *= boardLight * exp(-max(uCoreDist - 0.35, 0.0) * 0.21) * mix(1.0, 1.25, uMorph);
+  col = col + endWall * (1.0 - wall) * chamberLight;
   vec2 coreUv = p / (2.0 * coreR) * vec2(1.0, -1.0) + 0.5;
   float inCore = step(0.0, coreUv.x) * step(coreUv.x, 1.0) * step(0.0, coreUv.y) * step(coreUv.y, 1.0);
   vec3 core = texture(uCore, coreUv).rgb * inCore;
-  float chamberLight = smoothstep(uChamberDepth - 5.0, uChamberDepth - 0.5, uZ + 2.0);
-  col += core * (1.0 - wall) * chamberLight * uCoreDim;
-  float glow = exp(-rho / max(coreR * 0.9, 0.02)) * chamberLight;
-  col += SIGNAL * glow * (0.35 + 0.9 * uFlash) * uCoreDim;
-  col += mix(SIGNAL, vec3(1.0), 0.55) * uFlash * exp(-rho * rho / max(coreR * coreR * 0.9, 0.002)) * 1.25;
+  col += core * chamberLight * uCoreDim;
+  float glow = exp(-rho / max(coreR * 0.4, 0.02)) * chamberLight;
+  col += SIGNAL * glow * (0.3 + 0.8 * uFlash) * uCoreDim;
+  col += mix(SIGNAL, vec3(1.0), 0.55) * uFlash * exp(-rho * rho / max(coreR * coreR * 0.12, 0.002)) * 1.1;
   // Walls near the chamber catch the core's light.
   col += SIGNAL * base * wall * chamberLight * exp(-max(uChamberDepth - depth, 0.0) * 0.8) * 0.9;
 
@@ -259,9 +267,9 @@ void main() {
     col += SIGNAL * streak * clamp((abs(uSpeed) - 0.4) * 0.12, 0.0, 0.5) * fog;
   }
 
-  // The portal opens from the centre of the pupil.
-  float R = pow(uReveal, 1.5) * 2.7;
-  float alpha = 1.0 - smoothstep(R - 0.42, R + 0.08, rho * (1.0 + 0.12 * (vnoise(vec2(th * 3.0, uTime * 0.3)) - 0.5)));
+  // Seen through the opening pupil first, then everywhere once the pupil fills the view.
+  float w = length(css - uWindow.xy);
+  float alpha = max(1.0 - smoothstep(uWindow.z * 0.9, uWindow.z * 0.995, w), uReveal);
   outColor = vec4(col * alpha, alpha);
 }`;
 
@@ -322,7 +330,7 @@ void main() {
   }
   // Everything is drawn back into the core before the pull-back.
   float tc = clamp((uCollapse - aSeed.y * 0.3) / 0.7, 0.0, 1.0);
-  float ec = tc * tc * tc;
+  float ec = tc * tc * (3.0 - 2.0 * tc);
   if (uCollapse > 0.0) {
     vec2 from = aTarget.x >= 0.0 ? perimeter(aTarget.x < 0.5 ? uCards[0] : aTarget.x < 1.5 ? uCards[1] : uCards[2], aTarget.y)
       : uCore + dir * speed * halfMin * 0.8;

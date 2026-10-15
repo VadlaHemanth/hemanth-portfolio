@@ -10,8 +10,9 @@ import {JourneyRenderer} from "./renderer.js";
 import {createTimeline, zoomCamera, CHAMBER_DEPTH, smoothstep} from "./timeline.js";
 import {Overlays, layoutCards} from "./overlays.js";
 import {chooseTier, fetchAll} from "./assets.js";
+import {initAmbient} from "./ambient.js";
 
-const CORE_SIZE = 0.45;
+const CORE_SIZE = 0.9;
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -41,7 +42,9 @@ export function initJourney() {
   const status = root.querySelector("[data-j='status']");
   const reducedQuery = matchMedia("(prefers-reduced-motion: reduce)");
   // Capture mode renders single deterministic frames on request (QA and screenshots).
-  const capture = new URLSearchParams(location.search).has("journey-capture");
+  const params = new URLSearchParams(location.search);
+  const capture = params.has("journey-capture");
+  const noGrain = params.has("nograin");
   const coarse = matchMedia("(pointer: coarse)").matches;
 
   // Smooth scrolling for the whole page. Touch keeps native momentum.
@@ -81,6 +84,7 @@ export function initJourney() {
   let renderScale = coarse ? 0.85 : 1;
   const frameTimes = [];
   let qualityCooldown = 0;
+  let eco = false;
   let tour = null;
   let dpr = 1;
 
@@ -121,9 +125,8 @@ export function initJourney() {
   let planes = null;
 
   function signalGeometry(state, time) {
-    const emerge = smoothstep(0.02, 1, state.portal);
-    let ahead = lerp(30, 2.35, emerge ** 0.7) + 0.22 * Math.sin(time * 0.9);
-    let level = smoothstep(0.0, 0.06, state.portal);
+    let ahead = lerp(30, 2.35, state.entry ** 0.8) + 0.22 * Math.sin(time * 0.9);
+    let level = smoothstep(0.0, 0.12, state.entry);
     if (state.chapter === "machine" || state.phase === "show" || state.phase === "settle") {
       // The signal reaches the processor and is absorbed into the core.
       const into = state.phase === "forward" ? state.t : 1;
@@ -155,9 +158,9 @@ export function initJourney() {
       halfMin,
       frameCenter,
       bloomThreshold: 0.72,
-      bloomStrength: lerp(0.22, 0.9, state.portal),
+      bloomStrength: eco ? 0 : lerp(0.22, 0.9, state.portal),
       vignette: lerp(0.45, 0.62, state.portal),
-      grain: 0.035,
+      grain: noGrain ? 0 : 0.035,
       fringe: 0,
       blur: 0,
       blurCenter: [0.5, 1 - frameCenter[1] / lvh],
@@ -166,8 +169,13 @@ export function initJourney() {
     const intro = introStart < 0 ? 0 : (time - introStart);
     const exposure = smoothstep(0, 1.5, intro);
     const sweep = lerp(-0.4, 1.7, clamp(intro / 2.1));
+    let windowCircle = [frameCenter[0], frameCenter[1], 1e5];
     if (state.portal < 0.999) {
       const cam = zoomCamera(state.zoomLog, width, svh, plate, timeline.zoomLen);
+      const pupilR = plate.pupilRadius * (1 + 0.55 * state.dilation) * cam.sigma;
+      windowCircle = [cam.pupil[0], cam.pupil[1], state.window > 0 ? pupilR * smoothstep(0, 1, state.window * 1.4) : 0];
+      frameCenter[0] = cam.pupil[0];
+      frameCenter[1] = cam.pupil[1];
       f.plates = {
         sigma: cam.sigma,
         pupilScreen: cam.pupil,
@@ -196,6 +204,7 @@ export function initJourney() {
         coreDist: state.core,
         coreSize: CORE_SIZE,
         reveal: state.portal,
+        window: windowCircle,
         flash: Math.max(flashBurst, flashCollapse * 0.8),
         coreDim: 1 - 0.62 * smoothstep(0.3, 0.9, state.assemble) * (1 - smoothstep(0.35, 1, state.collapse)),
         signal: [...sig.head, ...sig.tail],
@@ -234,7 +243,13 @@ export function initJourney() {
     if (frameTimes.length < 45) return;
     const avg = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
     const max = coarse ? 0.9 : 1;
-    if (avg > 21 && renderScale > 0.5) {
+    if (avg > 24 && renderScale <= 0.5 && !eco) {
+      // Last resort on very slow GPUs: drop the bloom passes.
+      eco = true;
+      root.dataset.eco = "true";
+      qualityCooldown = 120;
+      frameTimes.length = 0;
+    } else if (avg > 21 && renderScale > 0.5) {
       renderScale = Math.max(0.5, renderScale - 0.1);
       renderer.resize(canvas.width, canvas.height, renderScale);
       qualityCooldown = 90;
@@ -367,6 +382,8 @@ export function initJourney() {
       });
       loop.bitmaps = bitmaps;
       root.classList.add("is-loaded");
+      loop.ambient = initAmbient(document.querySelector("[data-ambient]"), bitmaps);
+      loop.ambient?.setActive(!visible);
       if (status) status.textContent = "";
     } catch (error) {
       console.warn("[journey]", error);
@@ -392,6 +409,7 @@ export function initJourney() {
 
   new IntersectionObserver(([entry]) => {
     visible = entry.isIntersecting;
+    loop.ambient?.setActive(!visible);
   }, {rootMargin: "20% 0px"}).observe(root);
 
   let resizeTimer = 0;

@@ -33,12 +33,37 @@
   height: var(--frame-h, 100svh);
   width: auto;
   max-width: none;
-  display: none;
+  display: block;
   -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent 100%), linear-gradient(to right, transparent 0, #000 12%, #000 88%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
 }
 
 [data-hidden] { visibility: hidden; }
+html.js:not(.journey-static) .journey-poster { display: none; }
+
+/* The one orchestrated load-in: the name rises out of a mask while the face lights up. */
+.journey-name span { overflow: hidden; }
+.journey-name span::before { content: none; }
+html.js:not(.journey-static) .journey:not(.is-ready) .journey-hero > * { opacity: 0; }
+html.js:not(.journey-static) .journey.is-ready .journey-name span {
+  animation: journey-rise 1100ms var(--ease-out) both;
+}
+html.js:not(.journey-static) .journey.is-ready .journey-name span:nth-child(2) { animation-delay: 120ms; }
+html.js:not(.journey-static) .journey.is-ready .journey-line { animation: journey-fade 900ms var(--ease-out) 420ms both; }
+html.js:not(.journey-static) .journey.is-ready .journey-meta { animation: journey-fade 900ms var(--ease-out) 540ms both; }
+html.js:not(.journey-static) .journey.is-ready .journey-actions { animation: journey-fade 900ms var(--ease-out) 660ms both; }
+html.js:not(.journey-static) .journey.is-ready .journey-hint { animation: journey-fade 900ms var(--ease-out) 1100ms both; }
+@keyframes journey-rise {
+  from { transform: translateY(105%); clip-path: inset(0 0 100% 0); }
+  to { transform: none; clip-path: inset(0 0 0 0); }
+}
+@keyframes journey-fade {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.js .journey.is-ready .journey-hero * { animation: none !important; }
+}
 
 /* ---------- Hero ---------- */
 .journey-hero {
