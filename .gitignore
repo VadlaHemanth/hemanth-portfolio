@@ -50,3 +50,6 @@
 **/*secret*
 **/*token*
 **/about-me.txt
+
+# Shared design tokens are public CSS, not credentials.
+!/website/css/tokens.css

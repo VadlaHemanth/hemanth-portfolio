@@ -1,0 +1,87 @@
+/*
+ * H² design tokens, shared by the journey and the portfolio sections.
+ * Principle: blue is emitted light (glows, hairlines, focus, links), never a flat fill.
+ * The warm brown eye is the only warm element on the page, so no warm UI colours exist here.
+ */
+@font-face {
+  font-family: "Hubot Sans";
+  src: url("../fonts/HubotSans-VF.woff2") format("woff2");
+  font-weight: 200 900;
+  font-stretch: 75% 125%;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Mona Sans";
+  src: url("../fonts/MonaSans-VF.woff2") format("woff2");
+  font-weight: 200 900;
+  font-stretch: 75% 125%;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: dark;
+
+  /* Colour */
+  --void: #000000;          /* pupil black: the stage and page base */
+  --sclera: #edf1f7;        /* primary text */
+  --mist: #a2abbd;          /* secondary text */
+  --dim: #636c7e;           /* tertiary text, meta */
+  --signal: #2b7bff;        /* electric blue, emitted light only */
+  --spark: #9cc6ff;         /* the hot core of the signal */
+  --current: #0a2464;       /* deep blue for light falloff and shadows of glow */
+  --line: rgb(156 198 255 / 0.14);
+  --line-strong: rgb(156 198 255 / 0.28);
+  --veil: rgb(0 0 0 / 0.62);
+
+  /* Type: Hubot Sans (the machine) for display, Mona Sans (the human) for reading */
+  --font-display: "Hubot Sans", "Mona Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: "Mona Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Classical scale (Bringhurst) made fluid between 360 px and 1600 px viewports */
+  --step--1: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);   /* 13–14 */
+  --step-0: clamp(1rem, 0.97rem + 0.15vw, 1.125rem);        /* 16–18 */
+  --step-1: clamp(1.125rem, 1.07rem + 0.3vw, 1.3125rem);    /* 18–21 */
+  --step-2: clamp(1.3125rem, 1.2rem + 0.55vw, 1.5rem);      /* 21–24 */
+  --step-3: clamp(1.5rem, 1.25rem + 1.2vw, 2.25rem);        /* 24–36 */
+  --step-4: clamp(2.25rem, 1.75rem + 2.4vw, 3.75rem);       /* 36–60 */
+  --step-5: clamp(2.75rem, 1.9rem + 4.2vw, 6rem);           /* 44–96 */
+  --step-6: clamp(3.25rem, 1.8rem + 7vw, 9rem);             /* 52–144 */
+
+  --leading-tight: 0.92;
+  --leading-display: 1.02;
+  --leading-body: 1.55;
+  --measure: 64ch;
+
+  /* Space (8-pt rhythm, fluid at the large end) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: clamp(3.5rem, 2.5rem + 4vw, 6rem);
+  --space-9: clamp(5rem, 3rem + 8vw, 10rem);
+  --gutter: clamp(1.25rem, 0.6rem + 3vw, 3.5rem);
+  --max: 88rem;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-1: 160ms;
+  --dur-2: 320ms;
+  --dur-3: 640ms;
+
+  /* Shape: crisp, never pill-shaped panels */
+  --radius-1: 2px;
+  --radius-2: 6px;
+  --focus: 0 0 0 2px var(--void), 0 0 0 4px var(--signal);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-1: 0ms;
+    --dur-2: 0ms;
+    --dur-3: 0ms;
+  }
+}

@@ -106,13 +106,13 @@ try {
   const tracked=new Set(git('ls-tree','-r','--name-only',revision,'--','website').toString().trim().split('\n'));
   const publicFiles=[
     ['index.html','/'],['app.js','/app.js'],['motion.js','/motion.js'],['project-screens.js','/project-screens.js'],
-    ['content.js','/content.js'],['styles.css','/styles.css'],['scroll-story.css','/scroll-story.css'],['catalog.css','/catalog.css'],
+    ['content.js','/content.js'],['styles.css','/styles.css'],['scroll-story.css','/scroll-story.css'],
     ['resume.html','/resume.html'],['resume.css','/resume.css'],['robots.txt','/robots.txt'],['sitemap.xml','/sitemap.xml'],
     ['assets/motion/manifest.json','/assets/motion/manifest.json'],
     ['assets/motion/project-surfaces.json','/assets/motion/project-surfaces.json'],
     ['assets/social-preview.jpg','/assets/social-preview.jpg'],['assets/Vadla-Hemanth-Resume.pdf','/assets/Vadla-Hemanth-Resume.pdf'],
   ];
-  for(const file of ['skills.js','skills.css','motion-curve.js']) {
+  for(const file of ['catalog.css','skills.js','skills.css','motion-curve.js','css/tokens.css','css/sections.css','js/sections.js']) {
     if(tracked.has('website/'+file))publicFiles.push([file,'/'+file]);
   }
   let changedFilesVerified=0;
