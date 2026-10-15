@@ -21,7 +21,7 @@ export function layoutCards(width, height, focus = 0, hold = 0) {
   const breathe = 1 + 0.015 * Math.sin(hold * Math.PI);
   const place = (cx, cy, w, h, zoom, rotate, opacity, z) => ({x: cx - (w * zoom) / 2, y: cy - (h * zoom) / 2, w, h, zoom, rotate, opacity, z});
   if (!compact) {
-    const cw = clamp(width * 0.25, 290, 400);
+    const cw = clamp(Math.min(width * 0.25, height * 0.5), 250, 400);
     const ch = cw * 0.92;
     const leadH = cw * 1.06;
     const gap = Math.max(26, width * 0.026);
@@ -38,7 +38,7 @@ export function layoutCards(width, height, focus = 0, hold = 0) {
       place(cx + offset, cy + 6, cw, ch, sideZoom, -16, sideOpacity, 1),
     ];
     const top = cards[1].y;
-    return {compact, cards, title: {x: cx, y: Math.max(height * 0.2, top - height * 0.05), opacity: 1 - 0.85 * f}};
+    return {compact, cards, title: {x: cx, y: Math.max(height * 0.2 + 40, top - height * 0.05), opacity: 1 - f}};
   }
   // Phones and narrow tablets: the ERP card leads, the other two sit below it.
   const pad = Math.max(16, width * 0.05);
@@ -55,7 +55,7 @@ export function layoutCards(width, height, focus = 0, hold = 0) {
     place(width / 2, cy, cw, ch, lead, 0, 1, 2),
     place(width - pad - sw / 2, sy, sw, sh, 1, 0, sideOpacity, 1),
   ];
-  return {compact, cards, title: {x: width / 2, y: Math.max(height * 0.16, cards[1].y - height * 0.035), opacity: 1 - 0.85 * f}};
+  return {compact, cards, title: {x: width / 2, y: Math.max(height * 0.16 + 30, cards[1].y - height * 0.035), opacity: 1 - f}};
 }
 
 export class Overlays {

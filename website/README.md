@@ -1,83 +1,67 @@
 # H² — Vadla Hemanth portfolio
 
-A dependency-free, responsive portfolio with a native-scroll cinematic background.
-The page uses HTML, CSS and ES modules. No external fonts, animation framework,
-analytics, paid service or backend is required.
+A responsive portfolio that opens with a scroll-driven journey: from the portrait,
+into the eye, through a neural passage that turns into a circuit, to the projects,
+and back out to the face. It is plain HTML, CSS and ES modules with no build step.
+The only vendored library is Lenis for smooth scrolling. No analytics, external
+fonts, CDNs or backend.
 
 ## Run locally
 
 ```bash
-cd /path/to/Hemanth-Portfolio
+cd website
 python3 -m http.server 8080 --bind 127.0.0.1
 ```
 
 Open `http://127.0.0.1:8080/`. Use a local HTTP server, not a `file://` tab:
-browser security can block module and movie fetches from local-file origins.
-The working Codex-hosted preview uses `http://127.0.0.1:8768/`.
+browsers block module and texture fetches from local-file origins.
 
-## Experience
+## How the journey works
 
-- The video is the background of the first scroll section, not a pop-up player.
-- Scroll naturally in either direction. No wheel/touch interception or scroll snapping.
-- The eye approach and return have more scroll distance; the neural-to-circuit
-  passage moves faster; the project reveal keeps moving with a gentle camera zoom.
-- The three project screens contain linked public project covers, accurately
-  labelled conceptual previews rather than fabricated application screenshots.
-- Other sections follow the film. Navigation and Skip to work bypass it immediately.
-- The loading screen reports bytes downloaded, supports Escape/Skip, and fails
-  open after a bounded wait. It is not an artificial timed loader.
-- Reduced motion, data-saver preferences and direct section links bypass initial
-  motion loading. A manual Load action remains available.
-- Mobile viewport height remains stable when browser toolbars expand or retract.
-- A small header fullscreen control appears only where the native API is supported.
-- On rotation, the correct composition is selected. Only one movie blob is
-  retained; old object URLs are revoked.
+The camera lives in code. Every frame is computed from the scroll position, so the
+journey runs forward and backward at the same pace instead of scrubbing a video.
+
+- `js/journey/timeline.js` maps scroll to one perceived camera speed. Zooms advance
+  in log-scale, tunnel flight is converted into the same units, and the few
+  deliberate pace changes (reading the projects, the pull-back) are blended so the
+  speed never jumps. The journey is about seven screens of scroll on every device.
+- `js/journey/shaders.js` and `renderer.js` draw it with WebGL2: the eye stack
+  (portrait → eye → iris → pupil), the neural passage and circuit as a polar tunnel
+  with tileable textures, the processor burst as particles, then bloom, a light
+  velocity blur and film grain.
+- The eye is a stack of registered plates. The eye and iris plates were generated
+  in ChatGPT from the portrait's own crops, aligned to the portrait to under a pixel,
+  and colour-matched, so the zoom never visibly swaps one eye for another. The iris
+  texture comes from a real photo of Hemanth's eye.
+- The opening pupil becomes a window into the neural passage, so there is no black
+  gap between the eye and the tunnel.
+- `js/journey/overlays.js` positions the DOM text and the three project cards from
+  the same state, so text and picture never drift apart. The cards are real links.
+- `js/journey/journey.js` handles Lenis, loading, adaptive resolution (it lowers the
+  render scale, then drops bloom on very slow GPUs), the guided tour, context loss and
+  resizing. `?journey-capture` renders single deterministic frames for QA.
+
+Reduced motion (system setting or the header switch), a missing WebGL2 context or a
+failed load all show the static portrait and the full portfolio instead.
 
 ## Media
 
-`assets/motion/manifest.json` selects a high-quality H.264 rendition:
-720p for constrained devices/smaller displays or 1080p for capable devices that
-benefit from the added detail. Both are encoded from approved maximum-quality
-sources, not from the old lower-resolution web films. Short closed GOPs retain
-all 24 fps/480 frames while reducing mandatory download size substantially.
-Each complete MP4 is under 25 MiB and is buffered before cinematic scrolling.
-The optional full-resolution deliveries remain local and are not included in
-the public Pages build or footer.
-
-The hero's Explore button offers a gently paced, interruptible guided scroll.
-Normal scrolling remains native; wheel, touch or navigation keys immediately
-return control to the visitor. The Work navigation link remains direct access.
-
-`resume.html` provides the full résumé in accessible HTML, a PDF viewer link,
-and a one-page PDF download. The artifacts share one public data source.
-
-The underlying film has 480 frames at 24 fps, twenty video seconds, silent and
-without baked-in text. Scroll controls viewing time, so the on-page experience
-is not constrained to twenty wall-clock seconds. Its actual inner return uses
-reversed corrected forward frames. The eye is always the original portrait's
-source eye; the pupil masks the stylized inner scene instead of switching to a
-different photographic eye.
-
-4K-raster delivery is upscaled/recomposed, not native 4K capture. The original
-portrait has limited fine detail. Local old-signal and visible-logo corrections
-estimate small areas; they do not recover hidden original pixels. Original
-media and lossless processed source intermediates are retained separately from
-this deployable website. Final downloadable MP4s are high-quality lossy encodes.
+`assets/journey/manifest.json` lists three tiers (high, mid, low) of WebP plates and
+textures with content-hashed names. The tier depends on screen size, device memory,
+pointer type and connection. Everything for the journey is 1.0–1.6 MiB, loaded in
+priority order: the portrait first, so the hero appears at once, then the eye
+stack, then the tunnel textures. Production sources and the build script for these
+files live outside the website (`production-v3/`, not published).
 
 ## Content and privacy
 
-Public repository/site access was checked on 3 October 2026. Personal source
-material is NOT shipped. Only public work is named; private work is summarized
-as experience without project branding, addresses or repository links.
-
-The linked public attendance repository is an earlier snapshot, not evidence
-of the newer private implementation. Prototypes, self-reported activities and
-proposals are labelled. No invented employment, award, client count, accuracy,
-revenue, or deployed-scale claims are included. Education dates are self-reported.
-
-Project and experience data live in `content.js` and `content-enrichment.js`.
-The catalog is also rendered into `index.html` so it stays readable without JS.
-Project illustrations are original conceptual diagrams, not product screenshots.
+Personal source material is not shipped. Only public work is named; private work
+is summarised without project branding, addresses or repository links. The linked
+public attendance repository is an earlier snapshot, not the current private ERP.
+Prototypes and proposals are labelled. No invented employment, awards, client
+counts, accuracy or revenue claims. Project and experience data live in
+`content.js` and `content-enrichment.js`; the catalogue is rendered into
+`index.html` so it reads without JavaScript.
 
 ## Checks
 
@@ -86,20 +70,16 @@ npm run check
 npm test
 ```
 
-Tests cover content/link structure, section anchors and copy accuracy, navigation,
-motion preferences, scroll mapping, screen homography, and accessible defaults.
-Browser tests complement unit tests; emulation is not physical-device certification.
+Tests cover the journey timeline (pacing continuity, framing, card layout, media
+tiers), content and link structure, section anchors and copy accuracy, cache
+headers, and accessible defaults.
 
 ## Deploy
 
-Build the public output with `node scripts/build-site.mjs` from the repository
-root, then serve `dist`. Use HTTPS, correct media MIME types,
-byte-range support, and compression for text assets. `_headers` supplies optional
-Netlify/Cloudflare-compatible cache/security headers. Versioned video files can
-be cached immutably; keep `assets/motion/manifest.json` revalidating.
+Build the public output with `node scripts/build-site.mjs` from the repository root
+and serve `dist`. `_headers` supplies the security policy and cache rules: HTML,
+scripts and styles revalidate; journey plates and fonts are immutable.
 
-Production is https://portfolio.hemanthvadla.tech/ on Cloudflare Pages.
-The GitHub integration publishes updates pushed to `main`.
-Use build command `node scripts/build-site.mjs` and output directory `dist`.
-The allowlisted build excludes tests, source dossiers, maintenance notes,
-production intermediates and optional film downloads.
+Production is https://portfolio.hemanthvadla.tech/ on Cloudflare Pages. The GitHub
+integration publishes updates pushed to `main` (build command
+`node scripts/build-site.mjs`, output directory `dist`).

@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--name", default="Hemanth-Portfolio-Public-v2.zip")
+    parser.add_argument("--name", default="Hemanth-Portfolio-Public-v3.zip")
     args = parser.parse_args()
     if Path(args.name).name != args.name or not args.name.endswith(".zip"):
         raise SystemExit("Use a simple ZIP filename, not a path.")
