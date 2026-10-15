@@ -248,6 +248,9 @@ html.is-journey .site-header {
 .ambient { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
 
 .sec { position: relative; padding-top: var(--sec-pad); }
+/* Jumping to a section lands its opening rule just below the fixed header
+   (scoped to outrank the journey stylesheet's generic section[id] margin). */
+.portfolio .sec { scroll-margin-top: calc(var(--header-h) + var(--space-5) - var(--sec-pad)); }
 .sec-work { padding-top: calc(var(--sec-pad) * 1.15); }
 .sec:last-child { padding-bottom: var(--sec-pad); }
 
@@ -808,7 +811,8 @@ html.is-journey .site-header {
 }
 
 @media (min-width: 1800px) {
-  :root { --max: 96rem; }
+  /* A little wider on very large screens, without touching the shared --max token. */
+  :root { --wrap: min(100% - 2 * var(--gutter), 96rem); }
   .sec-lede { max-width: 38ch; }
 }
 

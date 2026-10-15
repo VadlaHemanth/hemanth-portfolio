@@ -125,82 +125,82 @@
                 <h2 id="work-title" class="sec-title">Selected work</h2>
                 <p class="sec-lede">The three projects I’d show you first.</p>
               </div>
-            <article id="case-attendance" class="feature" aria-labelledby="attendance-title">
-              <div class="feature-head">
-                <h3 id="attendance-title" class="feature-title">Attendance ERP</h3>
-                <p class="status status-live">In-progress prototype. The code is private.</p>
-              </div>
-              <div class="feature-intro">
-                <p class="feature-summary">A college attendance system where recognising a face is only the first step.</p>
-                <p class="feature-problem">Attendance also needs enrolment, records that people can check, and reports. I’m building those parts too.</p>
-              </div>
-              <div class="feature-flow">
-                <ol class="flow" aria-label="How it works">
-                  <li class="flow-step">
-                    <span class="flow-node" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="6.5" width="18" height="13" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8.5 6.5 10 4h4l1.5 2.5"/></svg></span>
-                    <span class="flow-wire" aria-hidden="true"></span>
-                    <p class="flow-name">Capture</p>
-                    <p class="flow-text">Camera frames come in for recognition.</p>
-                  </li>
-                  <li class="flow-step">
-                    <span class="flow-node" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 8.5V5h3.5M16.5 5H20v3.5M20 15.5V19h-3.5M7.5 19H4v-3.5"/><circle cx="12" cy="10.5" r="2.6"/><path d="M8 16.5c.9-1.8 2.3-2.6 4-2.6s3.1.8 4 2.6"/></svg></span>
-                    <span class="flow-wire" aria-hidden="true"></span>
-                    <p class="flow-name">Match</p>
-                    <p class="flow-text">InsightFace suggests likely matches among enrolled students.</p>
-                  </li>
-                  <li class="flow-step">
-                    <span class="flow-node" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 9.5h16M4 14.5h16M9.5 9.5V20"/></svg></span>
-                    <span class="flow-wire" aria-hidden="true"></span>
-                    <p class="flow-name">Record</p>
-                    <p class="flow-text">Each match becomes an attendance record.</p>
-                  </li>
-                  <li class="flow-step">
-                    <span class="flow-node" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="10" cy="8" r="3"/><path d="M4 19.5c.8-3.1 3-4.7 6-4.7 1.1 0 2.1.2 3 .6"/><path d="m14.5 17.5 2.2 2.2 4.3-4.4"/></svg></span>
-                    <p class="flow-name">Review</p>
-                    <p class="flow-text">A person checks uncertain matches. Records feed the reports.</p>
-                  </li>
-                </ol>
-              </div>
-              <div class="feature-notes">
-                <div class="note">
-                  <h4 class="note-title">What I’m building</h4>
-                  <ul class="ticks"><li>A Flask and PostgreSQL app that connects InsightFace recognition to enrolment, attendance records, review and reports.</li><li>Background processing with Celery and Redis, plus bulk imports.</li><li>Testing capture quality, replay scenarios and the CPU fallback for machines without a GPU.</li></ul>
+              <article id="case-attendance" class="feature" aria-labelledby="attendance-title">
+                <div class="feature-head">
+                  <h3 id="attendance-title" class="feature-title">Attendance ERP</h3>
+                  <p class="status status-live">In-progress prototype. The code is private.</p>
                 </div>
-                <div class="note">
-                  <h4 class="note-title">Where it stands</h4>
-                  <p>The ERP code is private. The public repository is an earlier, simpler attendance prototype, not the current implementation.</p>
-                  <p class="note-link"><a class="link" href="https://github.com/Vadla-Hemanth/Automatic-Attendance-System" target="_blank" rel="noopener noreferrer">Earlier prototype on GitHub<span class="sr-only">, Attendance ERP (opens in a new tab)</span></a></p>
-                  <p class="fine">Camera conditions affect recognition, so uncertain matches need review. Student photos and attendance records stay private.</p>
+                <div class="feature-intro">
+                  <p class="feature-summary">A college attendance system where recognising a face is only the first step.</p>
+                  <p class="feature-problem">Attendance also needs enrolment, records that people can check, and reports. I’m building those parts too.</p>
                 </div>
-                <div class="note">
-                  <h4 class="note-title">Built with</h4>
-                  <p>Python, Flask, PostgreSQL, InsightFace, Celery and Redis.</p>
+                <div class="feature-flow">
+                  <ol class="flow" aria-label="How it works">
+                    <li class="flow-step">
+                      <span class="flow-node" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="6.5" width="18" height="13" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8.5 6.5 10 4h4l1.5 2.5"/></svg></span>
+                      <span class="flow-wire" aria-hidden="true"></span>
+                      <p class="flow-name">Capture</p>
+                      <p class="flow-text">Camera frames come in for recognition.</p>
+                    </li>
+                    <li class="flow-step">
+                      <span class="flow-node" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 8.5V5h3.5M16.5 5H20v3.5M20 15.5V19h-3.5M7.5 19H4v-3.5"/><circle cx="12" cy="10.5" r="2.6"/><path d="M8 16.5c.9-1.8 2.3-2.6 4-2.6s3.1.8 4 2.6"/></svg></span>
+                      <span class="flow-wire" aria-hidden="true"></span>
+                      <p class="flow-name">Match</p>
+                      <p class="flow-text">InsightFace suggests likely matches among enrolled students.</p>
+                    </li>
+                    <li class="flow-step">
+                      <span class="flow-node" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 9.5h16M4 14.5h16M9.5 9.5V20"/></svg></span>
+                      <span class="flow-wire" aria-hidden="true"></span>
+                      <p class="flow-name">Record</p>
+                      <p class="flow-text">Each match becomes an attendance record.</p>
+                    </li>
+                    <li class="flow-step">
+                      <span class="flow-node" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="10" cy="8" r="3"/><path d="M4 19.5c.8-3.1 3-4.7 6-4.7 1.1 0 2.1.2 3 .6"/><path d="m14.5 17.5 2.2 2.2 4.3-4.4"/></svg></span>
+                      <p class="flow-name">Review</p>
+                      <p class="flow-text">A person checks uncertain matches. Records feed the reports.</p>
+                    </li>
+                  </ol>
                 </div>
-              </div>
-            </article>
+                <div class="feature-notes">
+                  <div class="note">
+                    <h4 class="note-title">What I’m building</h4>
+                    <ul class="ticks"><li>A Flask and PostgreSQL app that connects InsightFace recognition to enrolment, attendance records, review and reports.</li><li>Background processing with Celery and Redis, plus bulk imports.</li><li>Testing capture quality, replay scenarios and the CPU fallback for machines without a GPU.</li></ul>
+                  </div>
+                  <div class="note">
+                    <h4 class="note-title">Where it stands</h4>
+                    <p>The ERP code is private. The public repository is an earlier, simpler attendance prototype, not the current implementation.</p>
+                    <p class="note-link"><a class="link" href="https://github.com/Vadla-Hemanth/Automatic-Attendance-System" target="_blank" rel="noopener noreferrer">Earlier prototype on GitHub<span class="sr-only">, Attendance ERP (opens in a new tab)</span></a></p>
+                    <p class="fine">Camera conditions affect recognition, so uncertain matches need review. Student photos and attendance records stay private.</p>
+                  </div>
+                  <div class="note">
+                    <h4 class="note-title">Built with</h4>
+                    <p>Python, Flask, PostgreSQL, InsightFace, Celery and Redis.</p>
+                  </div>
+                </div>
+              </article>
               <div class="pair">
-              <article id="case-satellite" class="study" aria-labelledby="satellite-title">
-                <figure class="study-figure">
-                  <img src="./assets/work/satellite.svg" width="640" height="400" loading="lazy" decoding="async" alt="Illustration of stacked satellite image layers with one irregular region outlined for review. Synthetic, not real imagery.">
-                </figure>
-                <h3 id="satellite-title" class="study-title">Satellite research</h3>
-                <p class="status">Research prototype. The code is private.</p>
-                <p class="study-summary">Screening satellite images for possible oil spills, so a person knows where to look more closely.</p>
-                <ul class="ticks"><li>Compared U-Net and DeepLabV3 in PyTorch, choosing on validation results and testing on a separate held-out set.</li><li>Exported a model for CPU inference with ONNX Runtime, and added checkpoints so training can resume.</li></ul>
-                <p class="fine">A flagged region is a lead to investigate, not a confirmed oil spill. Imagery alone cannot establish which vessel was responsible.</p>
-                <p class="study-foot"><span class="study-stack">Built with PyTorch and ONNX Runtime.</span></p>
-              </article>
-              <article id="case-memory" class="study" aria-labelledby="memory-title">
-                <figure class="study-figure">
-                  <img src="./assets/work/memory.svg" width="640" height="400" loading="lazy" decoding="async" alt="Illustration of an invoice with a warning mark, a stack of earlier resolutions, and a person reviewing the suggestion.">
-                </figure>
-                <h3 id="memory-title" class="study-title">Vendor Payment Memory Agent</h3>
-                <p class="status status-public">Hackathon demo. The code is public.</p>
-                <p class="study-summary">A hackathon demo that remembers how earlier invoice exceptions were resolved, and suggests a next step for a person to approve.</p>
-                <ul class="ticks"><li>Recalls earlier resolutions through Hindsight, with a local JSONL fallback when the memory service is unavailable.</li><li>Checks GSTIN, HSN and purchase-order fields, and catches duplicate invoices, before it suggests anything.</li></ul>
-                <p class="fine">It runs on example invoices and vendors, not client records. A person makes every decision. The demo does not authorise or execute payments.</p>
-                <p class="study-foot"><span class="study-stack">Built with Python, FastAPI, Hindsight and JSONL.</span> <a class="link" href="https://github.com/VadlaHemanth/vendor-payment-memory-agent" target="_blank" rel="noopener noreferrer">Code on GitHub<span class="sr-only">, Vendor Payment Memory Agent (opens in a new tab)</span></a></p>
-              </article>
+                <article id="case-satellite" class="study" aria-labelledby="satellite-title">
+                  <figure class="study-figure">
+                    <img src="./assets/work/satellite.svg" width="640" height="400" loading="lazy" decoding="async" alt="Illustration of stacked satellite image layers with one irregular region outlined for review. Synthetic, not real imagery.">
+                  </figure>
+                  <h3 id="satellite-title" class="study-title">Satellite research</h3>
+                  <p class="status">Research prototype. The code is private.</p>
+                  <p class="study-summary">Screening satellite images for possible oil spills, so a person knows where to look more closely.</p>
+                  <ul class="ticks"><li>Compared U-Net and DeepLabV3 in PyTorch, choosing on validation results and testing on a separate held-out set.</li><li>Exported a model for CPU inference with ONNX Runtime, and added checkpoints so training can resume.</li></ul>
+                  <p class="fine">A flagged region is a lead to investigate, not a confirmed oil spill. Imagery alone cannot establish which vessel was responsible.</p>
+                  <p class="study-foot"><span class="study-stack">Built with PyTorch and ONNX Runtime.</span></p>
+                </article>
+                <article id="case-memory" class="study" aria-labelledby="memory-title">
+                  <figure class="study-figure">
+                    <img src="./assets/work/memory.svg" width="640" height="400" loading="lazy" decoding="async" alt="Illustration of an invoice with a warning mark, a stack of earlier resolutions, and a person reviewing the suggestion.">
+                  </figure>
+                  <h3 id="memory-title" class="study-title">Vendor Payment Memory Agent</h3>
+                  <p class="status status-public">Hackathon demo. The code is public.</p>
+                  <p class="study-summary">A hackathon demo that remembers how earlier invoice exceptions were resolved, and suggests a next step for a person to approve.</p>
+                  <ul class="ticks"><li>Recalls earlier resolutions through Hindsight, with a local JSONL fallback when the memory service is unavailable.</li><li>Checks GSTIN, HSN and purchase-order fields, and catches duplicate invoices, before it suggests anything.</li></ul>
+                  <p class="fine">It runs on example invoices and vendors, not client records. A person makes every decision. The demo does not authorise or execute payments.</p>
+                  <p class="study-foot"><span class="study-stack">Built with Python, FastAPI, Hindsight and JSONL.</span> <a class="link" href="https://github.com/VadlaHemanth/vendor-payment-memory-agent" target="_blank" rel="noopener noreferrer">Code on GitHub<span class="sr-only">, Vendor Payment Memory Agent (opens in a new tab)</span></a></p>
+                </article>
               </div>
             </div>
           </section>

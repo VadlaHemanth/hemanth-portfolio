@@ -65,50 +65,54 @@ const FLOW_ICONS = [
 
 const projectTitle = (project) => (project.id === "memory" ? `${project.title} ${project.subtitle}` : project.title);
 
+/** Indent every line after the first, so nested blocks line up in index.html. */
+const indent = (block, spaces) => block.replace(/\n/g, `\n${" ".repeat(spaces)}`);
+
 function flow(project) {
-  const steps = project.architecture.map((step, index) => `
-                  <li class="flow-step">
-                    <span class="flow-node" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false">${FLOW_ICONS[index]}</svg></span>${index < project.architecture.length - 1 ? `
-                    <span class="flow-wire" aria-hidden="true"></span>` : ""}
-                    <p class="flow-name">${escape(step.title)}</p>
-                    <p class="flow-text">${escape(step.text)}</p>
-                  </li>`).join("");
-  return `<ol class="flow" aria-label="How it works">${steps}
-                </ol>`;
+  const last = project.architecture.length - 1;
+  const steps = project.architecture.map((step, index) => `<li class="flow-step">
+  <span class="flow-node" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false">${FLOW_ICONS[index]}</svg></span>${index < last ? `
+  <span class="flow-wire" aria-hidden="true"></span>` : ""}
+  <p class="flow-name">${escape(step.title)}</p>
+  <p class="flow-text">${escape(step.text)}</p>
+</li>`);
+  return `<ol class="flow" aria-label="How it works">
+  ${steps.map((step) => indent(step, 2)).join("\n  ")}
+</ol>`;
 }
 
 function feature() {
   const project = getProject(ERP.id);
   const title = projectTitle(project);
   return `<article id="case-${project.id}" class="feature" aria-labelledby="${project.id}-title">
-              <div class="feature-head">
-                <h3 id="${project.id}-title" class="feature-title">${escape(title)}</h3>
-                <p class="status status-live">${escape(project.status)}</p>
-              </div>
-              <div class="feature-intro">
-                <p class="feature-summary">${escape(project.description)}</p>
-                <p class="feature-problem">${escape(project.problem)}</p>
-              </div>
-              <div class="feature-flow">
-                ${flow(project)}
-              </div>
-              <div class="feature-notes">
-                <div class="note">
-                  <h4 class="note-title">What I’m building</h4>
-                  <ul class="ticks">${ERP.building.map((line) => `<li>${escape(line)}</li>`).join("")}</ul>
-                </div>
-                <div class="note">
-                  <h4 class="note-title">Where it stands</h4>
-                  <p>${escape(project.evidence)}</p>
-                  <p class="note-link">${project.links.map((item) => external(item, title)).join(" ")}</p>
-                  <p class="fine">${project.limitations.map(escape).join(" ")}</p>
-                </div>
-                <div class="note">
-                  <h4 class="note-title">Built with</h4>
-                  <p>${escape(listing(ERP.stack))}.</p>
-                </div>
-              </div>
-            </article>`;
+  <div class="feature-head">
+    <h3 id="${project.id}-title" class="feature-title">${escape(title)}</h3>
+    <p class="status status-live">${escape(project.status)}</p>
+  </div>
+  <div class="feature-intro">
+    <p class="feature-summary">${escape(project.description)}</p>
+    <p class="feature-problem">${escape(project.problem)}</p>
+  </div>
+  <div class="feature-flow">
+    ${indent(flow(project), 4)}
+  </div>
+  <div class="feature-notes">
+    <div class="note">
+      <h4 class="note-title">What I’m building</h4>
+      <ul class="ticks">${ERP.building.map((line) => `<li>${escape(line)}</li>`).join("")}</ul>
+    </div>
+    <div class="note">
+      <h4 class="note-title">Where it stands</h4>
+      <p>${escape(project.evidence)}</p>
+      <p class="note-link">${project.links.map((item) => external(item, title)).join(" ")}</p>
+      <p class="fine">${project.limitations.map(escape).join(" ")}</p>
+    </div>
+    <div class="note">
+      <h4 class="note-title">Built with</h4>
+      <p>${escape(listing(ERP.stack))}.</p>
+    </div>
+  </div>
+</article>`;
 }
 
 function study(entry) {
@@ -116,16 +120,16 @@ function study(entry) {
   const title = projectTitle(project);
   const live = project.links.length > 0;
   return `<article id="case-${project.id}" class="study" aria-labelledby="${project.id}-title">
-                <figure class="study-figure">
-                  <img src="./assets/work/${entry.image}" width="640" height="400" loading="lazy" decoding="async" alt="${escape(entry.alt)}">
-                </figure>
-                <h3 id="${project.id}-title" class="study-title">${escape(title)}</h3>
-                <p class="status${live ? " status-public" : ""}">${escape(project.status)}</p>
-                <p class="study-summary">${escape(project.description)}</p>
-                <ul class="ticks">${entry.details.map((line) => `<li>${escape(line)}</li>`).join("")}</ul>
-                <p class="fine">${project.limitations.map(escape).join(" ")}</p>
-                <p class="study-foot"><span class="study-stack">Built with ${escape(listing(entry.stack))}.</span>${live ? ` ${project.links.map((item) => external(item, title)).join(" ")}` : ""}</p>
-              </article>`;
+  <figure class="study-figure">
+    <img src="./assets/work/${entry.image}" width="640" height="400" loading="lazy" decoding="async" alt="${escape(entry.alt)}">
+  </figure>
+  <h3 id="${project.id}-title" class="study-title">${escape(title)}</h3>
+  <p class="status${live ? " status-public" : ""}">${escape(project.status)}</p>
+  <p class="study-summary">${escape(project.description)}</p>
+  <ul class="ticks">${entry.details.map((line) => `<li>${escape(line)}</li>`).join("")}</ul>
+  <p class="fine">${project.limitations.map(escape).join(" ")}</p>
+  <p class="study-foot"><span class="study-stack">Built with ${escape(listing(entry.stack))}.</span>${live ? ` ${project.links.map((item) => external(item, title)).join(" ")}` : ""}</p>
+</article>`;
 }
 
 const selectedWork = `<section id="work" class="sec sec-work" aria-labelledby="work-title">
@@ -134,9 +138,9 @@ const selectedWork = `<section id="work" class="sec sec-work" aria-labelledby="w
                 <h2 id="work-title" class="sec-title">Selected work</h2>
                 <p class="sec-lede">The three projects I’d show you first.</p>
               </div>
-            ${feature()}
+              ${indent(feature(), 14)}
               <div class="pair">
-              ${STUDIES.map(study).join("\n              ")}
+                ${STUDIES.map((entry) => indent(study(entry), 16)).join("\n                ")}
               </div>
             </div>
           </section>`;
