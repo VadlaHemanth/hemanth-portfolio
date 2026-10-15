@@ -61,7 +61,9 @@ export function initJourney() {
   }
 
   const loop = {journey: true};
-  if (reducedQuery.matches || html.dataset.motion === "reduced") {
+  // app.js resolves the visitor's saved choice against the system setting into data-motion.
+  const prefersReduced = () => (html.dataset.motion ? html.dataset.motion === "reduced" : reducedQuery.matches);
+  if (prefersReduced()) {
     goStatic("Reduced motion: the portfolio is shown without the camera journey.");
   }
   const context = loop.journey ? createContext(canvas) : null;
@@ -281,6 +283,8 @@ export function initJourney() {
     if (tour) advanceTour(now);
     const dt = lastTime ? Math.min(100, now - lastTime) : 16.7;
     lastTime = now;
+    // The header's journey styling follows the scroll position even when the stage is off screen.
+    if (timeline) setJourneyClass(loop.journey && scrollVh(lenis.scroll) < timeline.scrollTotal - 0.02);
     if (!loop.journey || !ready || !visible || document.hidden) return;
     const target = scrollVh(lenis.scroll);
     if (smoothScroll === null) smoothScroll = target;
@@ -300,8 +304,14 @@ export function initJourney() {
       signalScreen: f.signalScreen || [view.width / 2, view.svh / 2],
       cardLayout: f.cardLayout || layoutCards(view.width, view.svh, state.focus, state.hold),
     });
-    html.classList.toggle("is-journey", smoothScroll < timeline.scrollTotal - 0.02);
     adaptQuality(dt);
+  }
+
+  let journeyClass = null;
+  function setJourneyClass(on) {
+    if (on === journeyClass) return;
+    journeyClass = on;
+    html.classList.toggle("is-journey", on);
   }
 
   // Guided tour: constant scroll speed reproduces the authored pace exactly.
@@ -404,6 +414,25 @@ export function initJourney() {
       ready = true;
     } catch {
       goStatic("Graphics were reset by the browser; the portfolio is shown directly.");
+    }
+  });
+
+  // The header's motion switch can turn the journey off and back on without a reload.
+  window.addEventListener("portfolio:motionchange", (event) => {
+    if (event.detail?.reduced) {
+      stopTour();
+      goStatic("Reduced motion: the portfolio is shown without the camera journey.");
+      loop.ambient?.setActive(false);
+    } else if (html.classList.contains("journey-static")) {
+      if (!context || !renderer) {
+        location.reload();
+        return;
+      }
+      html.classList.remove("journey-static");
+      loop.journey = true;
+      smoothScroll = null;
+      measure();
+      lenis.resize();
     }
   });
 
