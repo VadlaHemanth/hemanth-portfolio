@@ -1,9 +1,9 @@
 ---
 name: signature-scroll-portfolio
-description: Design and build a personal cinematic portfolio from verified biographical material, a distinctive visual concept, and scroll-linked motion; covers storyboards, media continuity, adaptive delivery, accessible interaction, testing, and approval-gated release.
+description: Design and build a personal cinematic portfolio from verified biographical material, a distinctive visual concept, and scroll-linked motion, either by scrubbing a pre-rendered film or by computing the camera in code; covers storyboards, media continuity, registered image plates and tileable textures, constant perceived speed, adaptive delivery, accessible interaction, motion QA, testing, and approval-gated release.
 metadata:
   author: Hemanth Vadla
-  version: "1.0.0"
+  version: "2.0.0"
 ---
 
 # Signature Scroll Portfolio
@@ -15,6 +15,11 @@ belongs to them, and carry it through a responsive, readable website.
 This is a quality-oriented production workflow, **not a promise of awards**.
 Hemanth's portrait → brown eye → imagined neural world → processor → projects
 → portrait is a case study, not the design everyone should receive.
+
+There are two ways to build the motion, and both are covered. Hemanth's v2
+scrubbed a pre-rendered film with scroll; his v3 computes the camera in code from
+the scroll position. Choose per concept; see
+[Choose the runtime](#choose-the-runtime-film-or-camera-in-code).
 
 ## Start here
 
@@ -39,16 +44,20 @@ Hemanth's portrait → brown eye → imagined neural world → processor → pro
 - **Evidence before copy.** Separate shipped work, experiments, coursework and
   aspirations. Do not fabricate metrics, employers, dates or expertise. Private
   repositories may support generic experience, never unauthorized names or links.
-- **Readable without the film.** The identity, work, experience and contact path
-  must remain usable without JavaScript, video, sound, a fast network or animation.
+- **Readable without the journey.** The identity, work, experience and contact
+  path must remain usable without JavaScript, WebGL, video, sound, a fast network
+  or animation.
 - **Preserve the approved identity.** Keep source portraits/media unchanged. If
-  identity continuity is failing, prefer source-derived crops/composites or a
-  matched reverse over generating a different face.
-- **One motion system.** Scroll, film, camera and overlays share the same
-  calibrated progress. A pretty source clip is not automatically a good scroll
+  identity continuity is failing, prefer source-derived crops/composites, plates
+  restored from the master's own crops and registered to it, or a matched reverse
+  over generating a different face.
+- **One motion system.** Scroll, the film or code camera, and overlays share the
+  same calibrated state. A pretty source clip is not automatically a good scroll
   experience.
-- **Quality has a delivery cost.** Inspect file size, decoder behavior and load
-  time as well as pixels. Upscaling does not recover unknowable detail.
+- **The visitor sets the pace.** Equal scroll should produce equal perceived
+  motion, except for deliberate, blended changes. Measure it rather than assume it.
+- **Quality has a delivery cost.** Inspect file size, decoder or GPU behavior and
+  load time as well as pixels. Upscaling does not recover unknowable detail.
 - **Preview before external changes.** A local build is not permission to push,
   create a public repository, publish, change DNS or post on social media. Obey
   the owner's current approval boundary.
@@ -59,15 +68,17 @@ Hemanth's portrait → brown eye → imagined neural world → processor → pro
 |---|---|---|
 | Discover the person | `references/person-and-concept.md` | Private fact ledger; public content map; two or three distinct directions if the owner has not chosen one |
 | Choose a concept | same | Approved one-page creative direction with motif, audience, emotional arc, references, exclusions and fallback |
-| Storyboard and generate | `references/media-production.md` | Complete storyboard prompt, shot list, numbered reference pairs, prompt log and one approved pilot before scaling |
-| Assemble and adapt | same | Continuity-approved master, responsive framing, delivery variants and a real byte/hash manifest |
-| Build scroll interaction | `references/scroll-runtime.md` | Native sticky scene, calibrated timing, readable project reveals, instant-response CTA, interruption, reduced-motion and direct-content paths |
+| Choose the runtime | `references/camera-in-code.md` (section 1) | A written choice, film scrubbing or camera in code, with reasons, a byte and GPU budget and a fallback |
+| Storyboard and generate | `references/media-production.md` | Complete storyboard prompt; a shot list (film) or a plate and texture list (code); prompt log; one approved pilot before scaling |
+| Assemble and adapt | `references/media-production.md`; `references/camera-in-code.md` for code | Film: continuity-approved master, responsive framing, delivery variants. Code: registered, colour-matched plates, tileable textures, image tiers. Either: a real byte/hash manifest |
+| Build scroll interaction | `references/scroll-runtime.md`; `references/camera-in-code.md` for code | Native-feeling scroll, calibrated or constant-speed pacing, readable project reveals, instant-response CTA, interruption, reduced-motion and direct-content paths |
 | Add optional accents | `references/scroll-runtime.md` | Only if requested: sparse opt-in sound, quiet defaults and a local audition |
-| Verify and prepare release | `references/quality-and-release.md` | Device/network QA, public-only build, recording, copy draft and an explicit approval checkpoint |
-| Publish approved work | same | Scoped Git push, verified hosting build/domain, live asset verification and rollback record |
+| Verify and prepare release | `references/quality-and-release.md`; optical-flow QA in `references/camera-in-code.md` | Device/network QA, motion measurement, public-only build, recording, copy draft and an explicit approval checkpoint |
+| Publish approved work | `references/quality-and-release.md` | Scoped Git push, verified hosting build/domain, live asset verification and rollback record |
 
 Use [references/hemanth-case-study.md](references/hemanth-case-study.md) to learn
-why earlier approaches changed. It is historical evidence, not universal settings.
+why earlier approaches changed, including why v3 moved the camera into code. It is
+historical evidence, not universal settings.
 
 ## Concept approval: make it belong to the owner
 
@@ -84,6 +95,28 @@ Once the direction is accepted, record the invariant features: identity, palette
 key prop geometry, spatial axis, transitions and public/private content. Distinguish
 those from negotiable details so a tiny pacing request does not trigger a redesign.
 
+## Choose the runtime: film or camera in code
+
+Decide after the concept is approved and before generating expensive media. Read
+section 1 of [references/camera-in-code.md](references/camera-in-code.md) first.
+
+- **Scrub a pre-rendered film** when the motion itself is what a video model does
+  well and code cannot (a material or character transformation, complex light, a
+  generated camera path through a scene), when the sequence is short and mostly
+  watched forwards, or when there is no time for shader work. Expect decoder
+  seeking to limit accuracy, especially in reverse; speed baked into each clip;
+  continuity that can drift between shots; and megabytes per visitor.
+- **Compute the camera in code** when the visitor must feel in control, the speed
+  must stay consistent in both directions, and the journey is a zoom, flight, pan
+  or reveal through material you can hold as still images. Expect shader and
+  graphics work, a look limited to what you can composite, GPU cost on weak
+  devices and the need for a static fallback. Downloads are usually much smaller.
+
+If unsure, prototype the hardest beat both ways at low cost. A mix is fine when
+one value drives everything. Retiming a film that keeps racing, crawling, stalling
+or changing its subject is a sign to move the camera into code; that is the v2 → v3
+story in the case study. A quiet CSS/SVG site remains a valid third answer.
+
 ## Media approval: don't multiply an unproven shot
 
 Build a complete overview storyboard, then generate **individual** clean reference
@@ -94,45 +127,76 @@ Reuse the exact previous endpoint as the next starting reference. Test the
 hardest transition first. Review continuity, framing, border fill, moving signal
 and usable space for overlays before generating the whole sequence.
 
+For a camera in code the generated media are stills: plates that restore the
+master's own crops ("a faithful high-resolution restoration, not a new photo"),
+tileable textures and end plates. Register and colour-match each plate to the
+master before judging it, and judge it at the scale where it hands over. Repeating
+a prompt in the same image chat may return a variation of the previous image; ask
+for a brand-new independent composition or start a new chat.
+
 Use a bounded contact sheet per review, not hundreds of full-resolution images.
 Keep a checkpoint with selected candidates and reasons so a crashed chat can
 resume without repeating downloads, generation or approvals.
 
 ## Runtime approval: verify the feeling and the mechanics
 
-Read the runtime reference before implementation. In particular:
+Read the runtime reference before implementation. For either runtime:
 
 - Let wheel, touch and keyboard input remain native; do not trap the visitor.
-- Map scroll progress to source time using a smooth, monotone, measured curve.
-  Correct variable motion in the source rather than adding one large easing
-  delay across the page.
+  Smoothing wheel input is acceptable if the document stays the scroller.
 - Start an explicit “Explore” journey immediately. Cancel guided motion on real
   user input, hidden tabs or reduced motion.
 - Keep project names readable while the camera has a small continuous motion.
   Do not create two successive, identical showcase states.
-- Drive perspective overlays and sound from **presented** video frames.
 - Preserve scene position through rotation/fullscreen; mobile address-bar
   height changes must not restart or reframe the scene.
 - A failed media load opens the content path, not an indefinite loader.
 
-The portable [scripts/motion-map.mjs](scripts/motion-map.mjs) provides monotone
-interpolation and progress helpers; it does not decide the owner's pacing.
-Supply measured/approved points. It can be used without a framework.
+For a film:
+
+- Map scroll progress to source time using a smooth, monotone, measured curve.
+  Correct variable motion in the source rather than adding one large easing
+  delay across the page.
+- Drive perspective overlays and sound from **presented** video frames.
+
+For a camera in code:
+
+- Express every chapter in the same visual units (log-scale zoom, flight
+  converted at a matched screen radius) and keep scroll per unit constant. Blend
+  deliberate pace changes so velocity never steps; ease arrivals out.
+- Bridge scenes through an aperture instead of a black gap, and keep velocity
+  continuous across every chapter join.
+- Drive overlays from the same state as the camera. Render a deterministic frame
+  on request so the motion can be measured.
+- Adapt render scale to measured frame time; fall back to the static path when
+  WebGL2 or the assets fail.
+
+The portable helpers provide mechanics, not the owner's pacing. Supply measured or
+approved values. [scripts/motion-map.mjs](scripts/motion-map.mjs) gives monotone
+progress → media-time interpolation for a film.
+[scripts/pace-map.mjs](scripts/pace-map.mjs) turns a code journey's chapter list
+of `{length, speed}` into a smooth scroll ↔ visual mapping. Neither needs a
+framework.
 
 ## Acceptance and handoff
 
 Run relevant existing tests before and after edits. Add behavioral tests for
 crossings, cancellation, context loss, layout, media selection, loading failure
 and privacy boundaries. A passing string/regex check alone is not runtime proof.
+For a camera in code, also test pacing steps, chapter joins, framing on the target
+viewports and each tier's byte budget, and run the optical-flow loop with its
+caveats. Metrics locate problems; scrolling the journey on real devices decides.
 
-Use [scripts/check-media.py](scripts/check-media.py) to inspect delivery metadata,
-hashes, frame counts and fast-start atom order. It does not certify perceptual
-quality; look at representative frames and run the actual browser interaction.
+Use [scripts/check-media.py](scripts/check-media.py) to inspect video delivery
+metadata, hashes, frame counts and fast-start atom order. It does not certify
+perceptual quality; look at representative frames and run the actual browser
+interaction.
 
 Before requesting release approval, provide:
 
 - Local preview with clear differences from the last approved build.
 - Known limitations, a concise QA result, and a truthful quality/size comparison.
+  Name the devices and GPUs that were not checked.
 - Public-safe source/build package, personal-data exclusions, and reproducible
   commands. Keep original/private media separate.
 - A real browser recording and a first-person post draft if requested. Label any

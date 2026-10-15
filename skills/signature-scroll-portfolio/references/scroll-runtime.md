@@ -1,8 +1,13 @@
-# Scroll, video, overlays and sound as one system
+# Scroll, motion, overlays and sound as one system
 
 Use after the direction and a media pilot are approved. Preserve an existing
 working stack. A library may help, but it cannot fix mismatched imagery or a
 poor time curve by itself.
+
+The motion can come from a pre-rendered film scrubbed by scroll, or from a camera
+computed in code. Sections 2 and 3 are about film. For a camera in code, read
+[camera-in-code.md](camera-in-code.md) for pacing, rendering, loading and motion
+QA; the rest of this page applies to both.
 
 ## 1. Progressive architecture
 
@@ -10,15 +15,19 @@ Start with semantic HTML: readable identity, work, case studies, experience,
 skills and contact. Keep important text in the DOM, not burned into a movie.
 Style the static experience first.
 
-Enhance the opening into a tall section with a sticky viewport. The source movie
-is muted, inline, not looping, and selected once for the device. Ordinary page
-content follows the sticky section. Provide direct Work navigation and Skip to
-work. Do not trap a recruiter in a long intro.
+Enhance the opening into a tall section with a sticky viewport. A film is muted,
+inline, not looping, and selected once for the device. A code-driven canvas is
+`aria-hidden` and draws over a static poster that is already in the HTML.
+Ordinary page content follows the sticky section. Provide direct Work navigation
+and Skip to work. Do not trap a recruiter in a long intro.
 
-Avoid replacing the native scrolling element or cancelling wheel/touch events.
-One scroll listener should request at most one animation-frame update. Cancel
-off-screen work. Prefer transform/opacity and profile expensive filters, masks
-and excessive compositing layers; they are not universally “GPU free.”
+Keep the document as the scroller; don't replace the native scrolling element
+or cancel touch events. Smoothing wheel input with a library such as Lenis is
+acceptable when touch keeps native momentum, keyboard and anchor navigation still
+work and nothing locks the page. One scroll listener should request at most one
+animation-frame update. Cancel off-screen work. Prefer transform/opacity and
+profile expensive filters, masks and excessive compositing layers; they are not
+universally “GPU free.”
 
 ## 2. Separate three coordinates
 
@@ -49,6 +58,10 @@ Keep `tau` small enough that the scene feels attached to the user's input.
 Use a bounded `dt` after stalls/tab changes. Do not solve source-motion problems
 by making the entire site lag behind the scroll.
 
+A camera in code has no decoder, so source time and presented time collapse into
+one state computed from scroll. Keep the first separation anyway: document
+progress → visual position → state, each a pure function.
+
 ## 3. Calibrate perceived motion, not just clip duration
 
 An AI-generated clip may accelerate into an eye, stop a travelling light, stall
@@ -70,6 +83,10 @@ those defects. A generic ease-in-out merely moves the defects around.
 5. Test the actual guide and manual scroll. Adjust only the offending intervals.
 6. If the source truly stops or changes identity, repair the film. Timing cannot
    invent travelling motion or fix a different eye.
+7. If repeated calibration still leaves uneven speed, stalls or a visibly
+   changing subject, the problem is baked into the footage. That is the point to
+   consider a camera in code, where speed is designed rather than discovered
+   (Hemanth's v2 → v3).
 
 Use `scripts/motion-map.mjs` for interpolation, not for automatic aesthetic
 decisions. Point data can come from manual review, motion analysis or both.
@@ -82,7 +99,12 @@ An optional guided visit should visibly begin in the first few frames, not use a
 long ease-in over a nearly still source opening. Guide the native scroll position
 at a steady rate and let the calibrated media curve do the perceptual work.
 
-For continuous decoder playback, derive playback rate from the local derivative:
+With a camera in code, a constant scroll speed reproduces the authored pace
+exactly, because the pacing already lives in the scroll → visual mapping. Ramp in
+and out over about half a second.
+
+For a film played continuously by the decoder, derive playback rate from the
+local derivative:
 
 ```text
 playbackRate = d(sourceTime)/d(progress) × d(progress)/d(wallTime)
@@ -114,11 +136,17 @@ hide/disable interaction when not visibly in the scene. Use accurate case studie
 and public-safe conceptual covers if actual product screenshots are unavailable.
 Do not fabricate screenshots or client outcomes.
 
+With a camera in code there is nothing to track: compute the cards' rectangles
+from the journey state with one layout function every frame, and pass the same
+rectangles to the shader when light or particles should meet the cards.
+
 ## 5. Responsive geometry and stable mobile viewports
 
 Choose authored compositions by aspect and actual display needs: e.g. wide,
 phone, landscape tablet, portrait tablet when the concept requires them.
-Do not assume every site needs four generated films.
+Do not assume every site needs four generated films. A camera in code computes
+the framing instead, as a function of width and height, so one set of plates
+serves every aspect; test that function on a list of real viewport sizes.
 
 - Never stretch a face to fill a frame.
 - Avoid baking black bars into references or delivery.
@@ -136,10 +164,14 @@ it under the new geometry. Do not reset to the beginning or show an unrelated fr
 ## 6. Adaptive media and honest loading
 
 Use same-origin, versioned assets with a manifest containing dimensions, actual
-bytes, fps, duration, codec, keyframe interval, quality role and SHA-256.
+bytes, fps, duration, codec, keyframe interval, quality role and SHA-256. For
+image tiers, record dimensions, bytes, the texel density a plate blend needs and
+a content hash in each file name.
 Select before downloading. For a short scrub movie, buffering one chosen
 complete file can be simpler than streaming, but it must fit the memory/network
-budget. Long films may need a different architecture.
+budget. Long films may need a different architecture. For plates and textures,
+fetch in priority order so the first screen is usable at once and later chapters
+load while the visitor reads it.
 
 Use viewport/DPR, Save-Data, reduced motion, reported network/hardware hints and
 bounded `MediaCapabilities.decodingInfo` where available. Those hints are
@@ -202,6 +234,10 @@ visual pacing and make the final recording without an audio stream.
 |---|---|
 | Source time is monotone and bounded | Dense interpolation samples + endpoint checks |
 | Same rate independent of frame cadence | Integrate several `dt` values and compare |
+| Perceived speed never steps (code) | Visual position per equal scroll step; bounded relative change |
+| Chapter joins are continuous (code) | Log scale, depth and window size sampled across every join |
+| Same journey on every screen (code) | Total scroll in viewport heights over a list of viewports |
+| Deterministic frames (code) | Capture mode renders the same picture for the same scroll value |
 | No guide fighting input | Real wheel/touch/key cancellation in browser |
 | One readable reveal | Visibility transitions + projected bounds + viewing interval |
 | Rotation preserves location | Before/after normalized position and composition |

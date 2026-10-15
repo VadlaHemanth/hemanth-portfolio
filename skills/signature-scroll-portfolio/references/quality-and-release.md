@@ -31,6 +31,12 @@ Measure first visible response after the CTA, fully readable project interval,
 one approach/retreat instead of a repeated hold, and the final handoff to normal
 content. Use relative and absolute checks appropriate to the viewport.
 
+For a camera in code, also capture deterministic frames at uniform scroll steps
+and read an optical-flow plot by chapter, with its caveats
+([camera-in-code.md](camera-in-code.md#10-measure-the-motion-optical-flow-qa)).
+On each real device, note the frame time and the render scale the adaptive loop
+settles on.
+
 Test focus restoration after dialogs/loaders, direct content navigation, correct
 accessible names and visible focus. Static tests can catch broken references;
 real browser tests catch interaction and decoder failures.

@@ -6,6 +6,10 @@ This grew out of building [my portfolio](https://portfolio.hemanthvadla.tech/):
 starting from a personal idea, generating and repairing the visuals, making the
 scroll feel connected, and getting the site to work on more than one screen.
 
+Version 2 of my site scrubbed a generated film with the scroll. I kept finding
+the motion unconvincing, so version 3 computes the camera in code instead. The
+skill covers both approaches and when each one fits.
+
 For me, the starting point was my portrait and brown eye. Yours should be
 different. A designer's sketchbook, a musician's instrument, an engineer's
 assembly process or a researcher's way of asking questions may be a better
@@ -17,7 +21,7 @@ generator or a guarantee of an award.
 
 ## Source and package
 
-The **12-file skill** lives under `skills/signature-scroll-portfolio` in the
+The **15-file skill** lives under `skills/signature-scroll-portfolio` in the
 [existing public portfolio repository](https://github.com/VadlaHemanth/hemanth-portfolio),
 not in a separate skill repository.
 
@@ -38,13 +42,17 @@ it; silence is a deliberate choice, not a missing feature.
 
 - Personal-context intake and public/private fact checking.
 - Concept selection around something genuinely yours.
+- A choice between scrubbing a pre-rendered film and computing the camera in
+  code, with the trade-offs of each.
 - Storyboard, identity references and image/video prompt templates.
 - Short-shot generation, continuity repair, reversal and responsive framing.
+- For a camera in code: registered image plates, tileable textures, constant
+  perceived speed, scene changes without black gaps and an optical-flow check.
 - Scroll calibration, native navigation, a readable project showcase and a useful loader.
 - Media quality, compression, accessibility and low-powered-device trade-offs.
 - Optional sparse sound, recording, a showcase post and an approval-gated release.
 - The actual Hemanth build case study: what changed and why.
-- Two small, testable helpers rather than a large dependency-heavy template.
+- Three small, testable helpers rather than a large dependency-heavy template.
 
 ## 1. Gather your information
 
@@ -214,7 +222,7 @@ installation.
 ```
 
 Do not install the portfolio repository root or copy only `SKILL.md`; the
-references and helpers are part of the 12-file package. For an update, compare
+references and helpers are part of the 15-file package. For an update, compare
 the existing installation with the new source and preserve any local changes.
 These commands install local files; they do not publish or deploy a portfolio.
 
@@ -247,9 +255,11 @@ that actually supports those actions.
 
 ## 3. Work in approval stages
 
-1. **Direction:** one concept and public content plan.
+1. **Direction:** one concept, a public content plan and the choice between a
+   film and a camera in code.
 2. **Pilot:** one storyboard and the hardest short transition.
-3. **Film:** continuity, responsive framing and readable overlay geometry.
+3. **Film or camera:** continuity, responsive framing and readable overlay
+   geometry; for a camera in code, registered plates and measured pacing.
 4. **Website:** native scroll, calibrated pacing, loader, fallbacks and content.
 5. **Review:** device/network checks, optional sound audition and a recording.
 6. **Release:** only then authorize the exact repo, visibility, host and domain.
@@ -265,7 +275,7 @@ the media inspection command; generation/upscaling services are optional.
 
 ```bash
 cd "${CODEX_HOME:-$HOME/.codex}/skills/signature-scroll-portfolio"
-node --test scripts/motion-map.test.mjs
+node --test scripts/motion-map.test.mjs scripts/pace-map.test.mjs
 python3 -m unittest discover -s scripts -p 'test_*.py'
 python3 scripts/check-media.py /path/to/delivery.mp4 \
   --width 1920 --height 1080 --fps 24 --frames 480 --max-mib 25
@@ -283,8 +293,8 @@ third-party screenshots, credentials, cloud account identifiers and paid model
 access. The references explain how to work with your own authorized materials.
 
 The detailed historical case study is separate from the general instructions.
-You may prefer a much lighter CSS/SVG experience over video. That is a valid
-outcome when it better expresses your work or serves your audience.
+You may prefer a much lighter CSS/SVG experience over video or WebGL. That is a
+valid outcome when it better expresses your work or serves your audience.
 
 ## Credits and sharing
 

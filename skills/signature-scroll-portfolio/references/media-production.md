@@ -1,10 +1,10 @@
 # Media production for a distinct cinematic portfolio
 
-Use this workflow when a personal visual story needs generated footage, deterministic compositing and responsive scroll delivery. Choose only the stages the project needs. A good approved shot does not need another model comparison; a source-preserving camera move does not need video generation.
+Use this workflow when a personal visual story needs generated footage or stills, deterministic compositing and responsive scroll delivery. Choose only the stages the project needs. A good approved shot does not need another model comparison; a source-preserving camera move does not need video generation. A camera computed in code needs generated stills (restored plates, tileable textures, end plates) rather than footage; see [stills for a camera in code](#stills-for-a-camera-in-code).
 
-**Reference version:** 1 · **Reviewed:** 4 October 2026. Provider limits, available models, licenses and browser capabilities must be checked again when executing. Examples are decisions from one production, not universal presets or approval to upload, spend compute or publish.
+**Reference version:** 2 · **Reviewed:** 15 October 2026. Provider limits, available models, licenses and browser capabilities must be checked again when executing. Examples are decisions from one production, not universal presets or approval to upload, spend compute or publish.
 
-Jump to [prompts](#2-storyboard-semantic-changes-and-shared-boundaries), [review/repair](#4-make-review-bounded-without-pretending-samples-are-exhaustive), [Kaggle](#8-budget-kaggle-as-a-controlled-job-not-an-unlimited-render-farm), [encodes](#9-separate-preservation-quality-intermediates-and-web-delivery) or [release evidence](#11-release-by-manifest-and-keep-the-history-honest).
+Jump to [prompts](#2-storyboard-semantic-changes-and-shared-boundaries), [stills for a camera in code](#stills-for-a-camera-in-code), [review/repair](#4-make-review-bounded-without-pretending-samples-are-exhaustive), [Kaggle](#8-budget-kaggle-as-a-controlled-job-not-an-unlimited-render-farm), [encodes](#9-separate-preservation-quality-intermediates-and-web-delivery) or [release evidence](#11-release-by-manifest-and-keep-the-history-honest).
 
 ## 1. Give the motif a job
 
@@ -129,6 +129,75 @@ These are adaptable briefs, not promises of pixel locks. Record the actual host,
 
 Check the chosen model's current documentation; for example, the [Google Gemini Omni guide](https://ai.google.dev/gemini-api/docs/omni) was retrievable on 4 October 2026. API documentation does not prove that a third-party host exposes the same controls or routes a particular returned clip to that model.
 
+### Stills for a camera in code
+
+A code-driven camera ([camera-in-code.md](camera-in-code.md)) needs still images, not footage: plates that restore the master at higher detail for each zoom level, tileable textures for passages, and an end plate. Generate each one separately from an exact crop or a short brief, then measure it before anyone reviews it by eye. Hemanth used ChatGPT's image tool and downloaded the original PNGs. The wording below is what worked for him, with brackets for your own subject.
+
+**Restoration plate**, one per zoom level. Send the exact crop of the master (Hemanth sent each crop enlarged to 1024 px):
+
+```text
+This image is a low-resolution[, over-processed] crop of [the master: subject and
+region, with its lighting]. Produce the SAME photograph at true macro quality: a
+faithful high-resolution restoration, not a new photo. Keep the framing
+pixel-aligned: [the focal point] exactly at the centre of the frame, the same
+[feature size and the positions of neighbouring features], the same
+[gaze/orientation], the same [colours, catch-lights, key light and rim light].
+Replace the [smeared, swirly upscaling artifacts] with natural photographic
+detail: [the real micro-detail this material has]. Realistic, no beauty
+retouching, no added glow, no text, no watermark, no border. Square 1:1 image,
+highest resolution available.
+```
+
+**Texture transfer from a real reference**, when a real close-up of the same subject exists (Hemanth's iris plate used a photo of his own iris):
+
+```text
+Image 1 is a blurry crop of [region] from [the master]; Image 2 is a real
+close-up photo of the same [person's feature / object]. Create a sharp
+[extreme-macro] photograph that keeps Image 1's exact framing ([focal point]
+exactly centred, the same [feature] size in frame, the same [edges visible at the
+frame edges], the same colours, the same [catch-light position]) but with the
+authentic texture of Image 2: [describe it]. Photoreal, sharp across the whole
+[feature], no text, no watermark, no border. Square 1:1 image, highest resolution
+available.
+```
+
+**Tileable texture** for a tunnel, wall or background that repeats:
+
+```text
+A seamless, tileable texture (opposite edges must continue perfectly,
+left↔right and top↔bottom) for [the surface]: [material] seen straight-on with
+flat, even lighting — no perspective, no vanishing point, no horizon. [Palette and
+features, with hex values for accent colours.] About [70]% of the area near-black,
+rich micro-detail, [regular cross-features such as pads, nodes or crossing strands,
+so motion along the passage stays visible], no text, no symbols, no watermark.
+Landscape 3:2 image, highest resolution available.
+```
+
+The cross-features matter. Hemanth's circuit prompt asked for traces "mostly running vertically"; the tunnel maps the texture's vertical axis along the passage, so the traces ran with the motion and the code had to tile them more densely before flight through them read at the same speed.
+
+**End plate**, what the passage arrives at:
+
+```text
+A perfectly symmetrical, front-on view looking straight down [the passage] at
+[the object] in the exact centre: [description]. The outer 20% of the frame fades
+to near-black so it can blend into the tunnel, with no bokeh or bright dots near
+the edges. [Style], no text, no logos, no letters, no watermark. Square 1:1 image,
+highest resolution available.
+```
+
+**Fresh context for each independent candidate.** Repeating a prompt in the same ChatGPT chat may redo the previous image instead of making a new one. One of Hemanth's "new" texture candidates was a close re-render of the first (normalised correlation 0.84) and had lost its clean tiling. Start a new chat, or add: "Make a brand-new, independent composition from scratch — do not reuse, edit or vary the previous images in this chat." Compare each candidate with the earlier ones before counting it as an alternative.
+
+Measure each still before reviewing it by eye:
+
+| Still | What to measure |
+| --- | --- |
+| Restoration plate | ECC alignment to the input crop (centre shift, scale, rotation, correlation); size of the key feature, such as pupil radius; mean lightness difference (ΔL\*) and colour difference on the feature |
+| Texture | Seam ratio per direction: mean difference across the wrap edge ÷ mean difference between neighbouring interior columns or rows, also in 8-pixel bands. Near 1 means the wrap looks like any other pixel boundary; Hemanth's rejected textures measured above 2. Also the near-black fraction, the accent hue and a 2×2 tiled preview with the seams in the middle |
+| End plate | Left–right mirror correlation; hotspot offset from the centre; mean and 95th-percentile brightness of the outer 20% |
+| Any candidate | Normalised correlation with earlier candidates, to catch a re-render passed off as a new take |
+
+Hemanth's chosen eye plate sat within about 0.1 portrait pixel of its input and about 1 unit of lightness darker; a rejected one sat 1.5 pixels higher with a 10% larger pupil. Registration and colour matching can absorb differences that small ([camera-in-code.md](camera-in-code.md#4-a-photographic-zoom-from-a-registered-plate-stack)), but a candidate that needs no correction is the better start. A restored plate shows the master as it appears at a larger size; it is not new evidence about the person.
+
 ## 3. Receive originals, not previews
 
 Keep immutable originals separate from references, trials, approved processed sources and delivery files. Download the original result rather than screen-recording it or saving a chat thumbnail. A JPEG converted to PNG has not regained detail.
@@ -169,7 +238,7 @@ Stop at the cap with a text checkpoint. Continue in a fresh context if needed. A
 | Failure | First useful response |
 | --- | --- |
 | Attractive still, wrong gaze or object orientation | Fix reference authority/viewpoint; a centred crop will not change gaze |
-| Identity changes during a zoom | Reuse one approved source; reveal abstraction earlier or conceal a deliberate source transfer |
+| Identity changes during a zoom | Reuse one approved source; reveal abstraction earlier or conceal a deliberate source transfer; or build the zoom from plates restored from the master's own crops and registered to it |
 | Long soft macro | Shorten unsupported magnification; obtain a better real capture if needed, not invented “restoration” |
 | Model merely dissolves between materials | Specify a local structural change; composite controlled layers if topology still fails |
 | Duplicated processor/object or unrecoverable geometry | One targeted retry or deterministic rebuild; don't hide it with bloom |
@@ -190,6 +259,7 @@ A portrait and separately photographed macro may not share projection or anatomy
 2. An earlier transition into clearly abstract material.
 3. A deliberately registered cut, disclosed as an edit rather than seamless anatomical continuity.
 4. A new authorized capture matching the required viewpoint.
+5. A registered plate stack drawn by a camera in code: the same master at every scale, with restored plates for nested regions that take over before the master softens ([camera-in-code.md](camera-in-code.md#4-a-photographic-zoom-from-a-registered-plate-stack)). Hemanth's v3 uses this.
 
 Do not independently regenerate identity for every aspect or return shot. A generated approved portrait is still generated; “same source throughout” is a continuity statement, not proof that it matches the original person pixel-for-pixel.
 
@@ -264,6 +334,7 @@ Official references: [Kaggle CLI](https://github.com/Kaggle/kaggle-cli) and [not
 | Upscaled raster | More output pixels; not necessarily more authentic detail |
 | High-quality or “near-lossless” MP4 | Still lossy unless sample equality is actually established; label the tested scope |
 | Browser rendition | Measured compromise among visual detail, bytes, decode cost and seeking |
+| Image tier for a code camera | Measured compromise among detail at the hand-off scale, bytes and decode time for one class of screen; content-hashed name for immutable caching |
 
 An FFV1 encode after repair cannot undo the repair or recover prior compression loss. RGB→YUV conversion, chroma subsampling and changed bit depth may lose information even before the final codec. Preserve colour/range deliberately; do not “fix” mismatches by relabelling tags. [FFV1 format specification](https://www.rfc-editor.org/rfc/rfc9043.html)
 
@@ -301,6 +372,8 @@ Separate three clocks:
 - **Encoded time:** frames and timestamps of the immutable film.
 - **Story progress:** scroll distance, including intentional reading room.
 - **Presented time:** what the video element has actually shown.
+
+A camera computed in code has no encoded or presented time: story progress maps to visual units and every layer reads the same state. Its pacing, loading tiers and motion QA are in [camera-in-code.md](camera-in-code.md).
 
 Manual scroll and an optional guided visit must not fight for ownership. In a guide, continuous playback with a bounded rate curve may outperform repeated seeks. Manual wheel/touch/pointer/navigation input should cancel guidance immediately. Precise source-frame control may still be needed at a slow reading interval.
 

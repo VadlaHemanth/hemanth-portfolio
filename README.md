@@ -84,9 +84,13 @@ I documented the process behind this site as
 It covers finding a personal concept, storyboarding, media continuity, responsive
 framing, scroll timing, loading, testing and release.
 
+It now includes both ways I have built the motion: scrubbing a pre-rendered film
+with the scroll, as the previous version of this site did, and computing the
+camera in code, as this version does. It also explains when each one fits.
+
 The starting point is your information and taste—not a copy of my eye animation.
 The README includes a prompt to help prepare a private `about-me.txt` handoff,
-and the skill includes small, tested timing and media-checking helpers.
+and the skill includes small, tested timing, pacing and media-checking helpers.
 
 This portfolio stays sound-free.
 

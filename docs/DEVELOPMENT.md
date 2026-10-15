@@ -32,7 +32,7 @@ npm test
 The reusable skill has independent, dependency-free helper tests:
 
 ```bash
-node --test skills/signature-scroll-portfolio/scripts/motion-map.test.mjs
+node --test skills/signature-scroll-portfolio/scripts/*.test.mjs
 python3 -B -m unittest discover -s skills/signature-scroll-portfolio/scripts -p 'test_*.py'
 ```
 

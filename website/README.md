@@ -29,9 +29,10 @@ journey runs forward and backward at the same pace instead of scrubbing a video.
   (portrait → eye → iris → pupil), the neural passage and circuit as a polar tunnel
   with tileable textures, the processor burst as particles, then bloom, a light
   velocity blur and film grain.
-- The eye is a stack of registered plates. The eye and iris plates were generated
-  in ChatGPT from the portrait's own crops, aligned to the portrait to under a pixel,
-  and colour-matched, so the zoom never visibly swaps one eye for another. The iris
+- The eye is a stack of registered plates: a super-resolved portrait, an eye plate
+  for each eye and an iris plate. The eye and iris plates were generated in ChatGPT
+  from the portrait's own crops, aligned to the portrait to under a pixel and
+  colour-matched, so the zoom never visibly swaps one eye for another. The iris
   texture comes from a real photo of Hemanth's eye.
 - The opening pupil becomes a window into the neural passage, so there is no black
   gap between the eye and the tunnel.
@@ -48,7 +49,7 @@ failed load all show the static portrait and the full portfolio instead.
 
 `assets/journey/manifest.json` lists three tiers (high, mid, low) of WebP plates and
 textures with content-hashed names. The tier depends on screen size, device memory,
-pointer type and connection. Everything for the journey is 1.0–1.6 MiB, loaded in
+pointer type and connection. Everything for the journey is 1.2–2.0 MiB, loaded in
 priority order: the portrait first, so the hero appears at once, then the eye
 stack, then the tunnel textures. Production sources and the build script for these
 files live outside the website (`production-v3/`, not published).

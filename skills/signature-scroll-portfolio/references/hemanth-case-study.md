@@ -2,11 +2,11 @@
 
 Use this reference to understand the decisions and reversals behind one cinematic portfolio, not to copy its identity. The reusable method is **personal evidence → visual motif → controlled transitions → actual work → useful website**. An eye, blue light, processor and H² mark are this project's choices, not skill requirements.
 
-Jump to [identity](#2-approve-a-reusable-identity-source-then-fix-the-right-mismatch), [actual Kaggle work](#6-cleanup-and-kaggle-what-actually-ran), [v2 continuity](#7-a-completed-v1-film-still-needed-a-different-continuity-solution), [web delivery](#10-v5v6-traded-all-i-weight-for-measured-adaptive-delivery) or [the choice of silence](#11-a-local-sound-experiment-then-the-choice-of-silence).
+Jump to [identity](#2-approve-a-reusable-identity-source-then-fix-the-right-mismatch), [actual Kaggle work](#6-cleanup-and-kaggle-what-actually-ran), [v2 continuity](#7-a-completed-v1-film-still-needed-a-different-continuity-solution), [web delivery](#10-v5v6-traded-all-i-weight-for-measured-adaptive-delivery), [the choice of silence](#11-a-local-sound-experiment-then-the-choice-of-silence) or [v3: the camera moves into code](#12-v3-what-changed-and-why).
 
 ## Evidence boundary and release snapshot
 
-**Documented:** 4 October 2026. **Release baseline:** `4bd4389d3db84624a6f257d1da365e3b0cd1483c`.
+**Documented:** 4 October 2026. **Release baseline:** `4bd4389d3db84624a6f257d1da365e3b0cd1483c`. Section 12 was added on 15 October 2026 and states its own scope; everything above it describes the film-based versions.
 
 - [Live portfolio](https://portfolio.hemanthvadla.tech/) · [Public source](https://github.com/VadlaHemanth/hemanth-portfolio).
 - This account uses recorded local plans, selection reports, processing receipts and source code. No images, private personal dossiers or source-chat history were opened for this documentation task.
@@ -163,13 +163,51 @@ The media still lasts 20 seconds. The guided visit uses roughly 25–27 seconds 
 
 This records the owner's decision, not a fresh verification of audio removal, the final recording or the next deployment. Those checks need their own release evidence rather than the earlier 48-test baseline. Optional-audio guidance for other portfolio owners remains valid: Hemanth's choice is not a global prohibition.
 
+## 12. v3: what changed and why
+
+**15 October 2026 — documented from the `v3-scroll-journey` branch at commit `0fe5253`, before that branch was merged or deployed.** The main branch, which the live site deploys from, was still v2 when this was written. The numbers below were measured at that commit; later commits can change them.
+
+**What failed in v2.** After the 4 October release and more retiming on 5 October (quicker eye transitions, a continuous faster journey, a focused camera on the Attendance ERP card, a fix for catch-up jumps after long frames), Hemanth's verdict did not change. In his words, paraphrased: the speed was not consistent, with some sections racing while others crawled; it felt like watching a video, not scrolling an animation; during the zoom into and out of the eye, the eye visibly changed between shots; and the blue signal stalled in the neural passage.
+
+The v3 design (`docs/superpowers/specs/2026-10-15-inside-hemanth-v3-design.md` in the portfolio repository) traced this to three causes:
+
+1. Seeking a video decoder on every scroll frame cannot be frame-accurate or smooth, and it is worse in reverse.
+2. Camera motion was baked into generated clips whose speed differed from shot to shot. A pacing curve could only paper over that.
+3. The face-to-eye passage used different pictures at different scales, so the switch showed.
+
+**What v3 does.** The approved story stayed: face → eye → mind → machine → projects → back to the face. The film went, and the camera moved into code. [camera-in-code.md](camera-in-code.md) describes the method in general terms.
+
+- Scroll maps to one perceived camera speed. Chapters are measured in visual units (the picture growing by a factor of e), tunnel flight is converted into the same units at half the screen radius, and the deliberate changes are blended with a Gaussian: about a third of the speed while the Attendance ERP card is read, a 1.4–3.1× quicker pull-back and an eased settle on the portrait. Unit tests check pacing steps, joins, framing and length on eight viewport sizes.
+- The zoom uses one master portrait throughout. An eye plate and an iris plate were generated in ChatGPT from the portrait's own crops (the iris plate also from a photo of his real iris), then ECC-registered, the eye plate to the portrait and the iris plate to the eye plate (correlation 0.995 and 0.96), colour-matched by low-frequency transfer and blended along natural boundaries, starting while the plate below is still sharp.
+- The pupil dilates by remapping the iris and becomes a window onto the neural passage, so there is no black gap. Flight inside the window starts from rest and reaches cruise speed as the pupil fills the screen.
+- The passage is a polar tunnel shader with tileable ChatGPT textures. Neural tissue turns into circuitry along a front that travels through depth, a circuit end wall and a processor core close the tunnel, and the blue signal is placed relative to the camera, so it cannot stall.
+- The project cards are real DOM links positioned from the same state; the burst's fragments land on their outlines.
+- The media are WebP tiers with content-hashed names, loaded portrait first, with an adaptive render scale and a static path for reduced motion, a missing WebGL2 context or a failed load.
+
+| Measure | v2 (main branch, 5 October) | v3 (branch, commit `0fe5253`) |
+| --- | --- | --- |
+| Whole public build | About 127 MiB, nearly all of it eight movie variants | About 5.7 MiB, including three quality tiers of journey plates, the résumé PDF and fonts |
+| Journey media per visitor | One movie of about 9–24 MiB, depending on the screen | 1.2–2.0 MiB of images, depending on the tier |
+| Journey length | — | About seven screens of scroll on every tested viewport (6.8–7.1 viewport heights) |
+
+**Still limited.**
+
+- Motion was checked with software rendering (headless Chromium with SwiftShader), deterministic frame captures, optical-flow measurement at 480×300 and unit tests of the timeline. It was not checked on every physical device or GPU. Smoothness and frame rate on low-end phones need real-device checks.
+- Optical flow is a proxy with known blind spots: it under-reads fine textures at low resolution and zooms over mostly black frames, so its plots only mean something next to the frames themselves.
+- The eye and iris plates are generated restorations of a generated portrait, matched to it at the scale shown. They are not biometric detail.
+- The journey needs WebGL2. Without it, or with reduced motion, visitors get the static portrait and the full portfolio.
+- At the time of writing, v3 had not been through the release checks in [quality-and-release.md](quality-and-release.md): deployed revision, live bytes and cache headers.
+
+**Lesson:** when retiming keeps moving a problem around, the problem is in the footage. Move the camera into code, reuse the same pixels at every scale, and measure perceived speed instead of trusting a curve.
+
 ## Claims to keep qualified
 
 - **Motif origin:** stage 01 records an approved personal concept; no earlier conversation was independently reconstructed here.
 - **Model provenance:** the portrait model and early third-party clip routing remain unspecified/user-attributed. Do not infer them from branding.
 - **Run scope:** Kaggle completion is established by later receipts; GPU parallelism, exact billing and pilot extrapolated timings are not.
 - **Visual scope:** contact sheets, native crops, emulated browsers and processed-frame hashes prove different things. None certifies perfect behaviour on all devices.
-- **Silent release:** the owner rejected the locally tested sound experiment on 4 October; no accents were published. Final removal, recording and deployment checks must be dated separately from the pinned baseline.
+- **Silent release:** the owner rejected the locally tested sound experiment on 4 October; no accents were published. Final removal, recording and deployment checks must be dated separately from the pinned baseline. v3 is also sound-free.
+- **v3 scope:** section 12 describes an unreleased branch at one commit. Its motion evidence is software rendering, optical flow and unit tests, not physical-device certification; its sizes must be measured again for any later build.
 
 ## Evidence index
 
@@ -196,6 +234,9 @@ implementation references below are pinned to the baseline commit.
 | Web-v5 `WORKER_FINAL.md`; revision-v5 `completion-audit.json` | Adaptive media selection and runtime integration |
 | Revision-v6 `completion.json` and `pacing.json`; `final-refined-v6.json` | Baseline pacing, verification and deployment receipt |
 | Owner's explicit 4 October decision after the local sound trial | Rejection of sound effects; silent website and final recording |
+| `docs/superpowers/specs/2026-10-15-inside-hemanth-v3-design.md` (in the repository) | v2 verdict, root causes, v3 goals and anti-goals |
+| v3 `website/js/journey/`, `website/tests/journey.test.mjs` and `website/assets/journey/manifest.json` at `0fe5253` | Pacing, rendering, loading tiers and byte budgets |
+| Production-v3 generation manifest and plate `stack.json`; v3 flow-capture outputs | Prompts and candidate verdicts, registration correlation, optical-flow plots |
 
 [concept]: #evidence-index
 [portrait]: #evidence-index
