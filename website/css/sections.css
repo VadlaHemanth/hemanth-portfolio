@@ -607,7 +607,6 @@ html.is-journey .site-header {
   line-height: 1.25;
 }
 .ledger-text { max-width: 60ch; color: var(--mist); }
-.ledger-text .link { margin-left: 0.15em; }
 .ledger-kind { justify-self: end; font-size: var(--step--1); font-weight: 500; font-stretch: 94%; color: var(--mist); }
 .ledger-after { max-width: 60ch; margin-top: var(--space-6); color: var(--mist); }
 
@@ -618,7 +617,7 @@ html.is-journey .site-header {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-7) clamp(2rem, 1rem + 4vw, 6rem);
 }
-.degree { padding-top: var(--space-5); border-top: 1px solid var(--line-strong); }
+.degree { padding-top: var(--space-5); border-top: 1px solid var(--line); }
 .degree-name {
   max-width: 18ch;
   font-family: var(--font-display);
@@ -823,8 +822,10 @@ html.is-journey .site-header {
   .index { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .feature-notes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .feature-notes .note:last-child { grid-column: 1 / -1; }
-  .ledger-row { grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); }
-  .ledger-kind { grid-column: 1; grid-row: 2; justify-self: start; }
+  /* Title and kind share a row; the description runs full width beneath. */
+  .ledger-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .ledger-text { grid-column: 1 / -1; grid-row: 2; }
+  .ledger-kind { grid-column: 2; grid-row: 1; }
 }
 
 @media (max-width: 860px) {
@@ -879,8 +880,8 @@ html.is-journey .site-header {
   .menu-button:not([hidden]) + .masthead-panel .tool-label-panel { display: inline; }
   .menu-button:not([hidden]) + .masthead-panel .tool-button { padding-inline: 0; }
 
-  /* Without the menu script the links stay visible, so the header scrolls away instead of covering text. */
-  .site-header:has(.menu-button[hidden]) { position: absolute; height: auto; }
+  /* Without the menu script the links stay visible, so the header joins the page flow instead of covering text. */
+  .site-header:has(.menu-button[hidden]) { position: relative; height: auto; }
   .site-header:has(.menu-button[hidden]) .masthead { flex-wrap: wrap; padding-block: var(--space-2); }
   .site-header:has(.menu-button[hidden]) .masthead-panel { flex-wrap: wrap; gap: 0 var(--space-5); }
   .site-header:has(.menu-button[hidden]) .site-nav { flex-wrap: wrap; gap: 0 var(--space-4); }
@@ -937,8 +938,7 @@ html.is-journey .site-header {
   .feature-notes { gap: var(--space-6); }
   .feature-notes .note:last-child { grid-column: auto; }
   .index { gap: var(--space-7); }
-  .ledger-row { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
-  .ledger-kind { grid-column: auto; grid-row: auto; justify-self: start; }
+  .ledger-row { gap: var(--space-2) var(--space-4); }
   .skill-groups { gap: var(--space-7); }
   .skill-list { display: flex; flex-wrap: wrap; gap: 0.15em 0.85em; }
   .pair { grid-template-columns: minmax(0, 1fr); row-gap: 0; }

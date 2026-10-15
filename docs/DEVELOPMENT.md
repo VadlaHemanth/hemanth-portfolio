@@ -92,7 +92,8 @@ python3 -m http.server 8080 --directory dist --bind 127.0.0.1
 ## Content and résumé
 
 Edit the public content modules and run `node website/build-content.mjs`.
-Project notes, native disclosures and static fallbacks use the same source.
+Selected work, smaller projects, experience and education are generated into
+`index.html` from the same source; `npm test` fails if the page falls out of sync.
 Private projects stay generic; their repository URLs are never published.
 
 The résumé builder reads only `design/resume-data.json`. Install ReportLab in a

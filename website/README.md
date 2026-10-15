@@ -86,7 +86,7 @@ npm run check
 npm test
 ```
 
-Tests cover content/link structure, navigation/dialog/disclosure behavior,
+Tests cover content/link structure, section anchors and copy accuracy, navigation,
 motion preferences, scroll mapping, screen homography, and accessible defaults.
 Browser tests complement unit tests; emulation is not physical-device certification.
 
