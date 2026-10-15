@@ -48,7 +48,8 @@ export function initJourney() {
   const coarse = matchMedia("(pointer: coarse)").matches;
 
   // Smooth scrolling for the whole page. Touch keeps native momentum.
-  const lenis = new Lenis({autoRaf: false, lerp: 0.085, wheelMultiplier: 0.9, smoothWheel: true, anchors: false});
+  const reducedAtStart = html.dataset.motion ? html.dataset.motion === "reduced" : matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const lenis = new Lenis({autoRaf: false, lerp: 0.085, wheelMultiplier: 0.9, smoothWheel: !reducedAtStart, anchors: false});
   window.__lenis = lenis;
   document.dispatchEvent(new CustomEvent("journey:lenis", {detail: lenis}));
 
@@ -384,13 +385,16 @@ export function initJourney() {
       planes = planeUniforms(tier);
       measure();
       const repeat = {neural: true, circuit: true};
-      const bitmaps = {};
+      const keep = {};
       let heroShown = false;
+      loop.files = files;
       await fetchAll(files, {
         onProgress: (p) => loaderLine?.style.setProperty("--load", p.toFixed(4)),
         onFile: (key, bitmap) => {
-          bitmaps[key] = bitmap;
           renderer.setTexture(key, bitmap, {repeat: !!repeat[key]});
+          // The ambient field reuses the two tunnel textures; everything else is freed at once.
+          if (key === "neural" || key === "circuit") keep[key] = bitmap;
+          else bitmap.close?.();
           if (key === "L0" && !heroShown) {
             heroShown = true;
             ready = true;
@@ -398,10 +402,11 @@ export function initJourney() {
           }
         },
       });
-      loop.bitmaps = bitmaps;
       root.classList.add("is-loaded");
-      loop.ambient = initAmbient(document.querySelector("[data-ambient]"), bitmaps);
+      // Phones skip the background field: it is subtle and costs memory and battery.
+      if (!coarse) loop.ambient = initAmbient(document.querySelector("[data-ambient]"), keep);
       loop.ambient?.setActive(!visible);
+      for (const bitmap of Object.values(keep)) bitmap.close?.();
       if (status) status.textContent = "";
     } catch (error) {
       console.warn("[journey]", error);
@@ -413,12 +418,18 @@ export function initJourney() {
     event.preventDefault();
     ready = false;
   });
-  canvas.addEventListener("webglcontextrestored", () => {
+  canvas.addEventListener("webglcontextrestored", async () => {
     try {
       renderer = new JourneyRenderer(context, {shardCount: coarse ? 700 : 1400});
-      const repeat = {neural: true, circuit: true};
-      for (const [key, bitmap] of Object.entries(loop.bitmaps || {})) renderer.setTexture(key, bitmap, {repeat: !!repeat[key]});
       measure();
+      // Textures were freed after upload; the files come back from the HTTP cache.
+      const repeat = {neural: true, circuit: true};
+      await fetchAll(loop.files || [], {
+        onFile: (key, bitmap) => {
+          renderer.setTexture(key, bitmap, {repeat: !!repeat[key]});
+          bitmap.close?.();
+        },
+      });
       ready = true;
     } catch {
       goStatic("Graphics were reset by the browser; the portfolio is shown directly.");
@@ -427,6 +438,7 @@ export function initJourney() {
 
   // The header's motion switch can turn the journey off and back on without a reload.
   window.addEventListener("portfolio:motionchange", (event) => {
+    lenis.options.smoothWheel = !event.detail?.reduced;
     if (event.detail?.reduced) {
       stopTour();
       goStatic("Reduced motion: the portfolio is shown without the camera journey.");

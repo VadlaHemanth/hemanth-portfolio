@@ -35,7 +35,7 @@ export async function fetchAll(files, {signal, onProgress, onFile} = {}) {
       received += blob.size;
       onProgress?.(total ? Math.min(1, received / total) : 1);
     }
-    const bitmap = await createImageBitmap(blob, {imageOrientation: "none", premultiplyAlpha: "none", colorSpaceConversion: "none"});
+    const bitmap = await createImageBitmap(blob, {premultiplyAlpha: "none", colorSpaceConversion: "none"});
     results[file.key] = bitmap;
     onFile?.(file.key, bitmap);
   }
