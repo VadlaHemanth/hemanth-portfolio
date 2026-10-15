@@ -1,0 +1,146 @@
+{
+ "version": 3,
+ "plate": {
+  "width": 1122,
+  "height": 1402,
+  "face": [
+   603,
+   470
+  ],
+  "pupil": [
+   692,
+   437
+  ],
+  "pupilRadius": 6,
+  "irisRadius": 19,
+  "edges": [
+   0.06,
+   0.06,
+   0.015,
+   0.09
+  ]
+ },
+ "levels": {
+  "L1": {
+   "affine": [
+    0.00333208,
+    3.58e-06,
+    -1.80645914,
+    -4.2e-07,
+    0.00333471,
+    -0.95570144
+   ],
+   "center": [
+    692,
+    437
+   ],
+   "radius": 150,
+   "region": null
+  },
+  "L2": {
+   "affine": [
+    0.012498560435631599,
+    -1.7223555195e-05,
+    -8.135749574165667,
+    2.9875401336000004e-06,
+    0.012441226196546399,
+    -4.937906026820906
+   ],
+   "center": [
+    692,
+    437
+   ],
+   "radius": 22,
+   "region": null
+  }
+ },
+ "tiers": {
+  "high": {
+   "L0": {
+    "src": "./assets/journey/high/L0.webp",
+    "bytes": 175306,
+    "texel": 1.0
+   },
+   "L1": {
+    "src": "./assets/journey/high/L1.webp",
+    "bytes": 358182,
+    "texel": 4.17842832
+   },
+   "L2": {
+    "src": "./assets/journey/high/L2.webp",
+    "bytes": 193026,
+    "texel": 15.673194786282025
+   },
+   "neural": {
+    "src": "./assets/journey/high/neural.webp",
+    "bytes": 351558
+   },
+   "circuit": {
+    "src": "./assets/journey/high/circuit.webp",
+    "bytes": 125708
+   },
+   "core": {
+    "src": "./assets/journey/high/core.webp",
+    "bytes": 9738
+   }
+  },
+  "mid": {
+   "L0": {
+    "src": "./assets/journey/mid/L0.webp",
+    "bytes": 175306,
+    "texel": 1.0
+   },
+   "L1": {
+    "src": "./assets/journey/mid/L1.webp",
+    "bytes": 358182,
+    "texel": 4.17842832
+   },
+   "L2": {
+    "src": "./assets/journey/mid/L2.webp",
+    "bytes": 193026,
+    "texel": 15.673194786282025
+   },
+   "neural": {
+    "src": "./assets/journey/mid/neural.webp",
+    "bytes": 351558
+   },
+   "circuit": {
+    "src": "./assets/journey/mid/circuit.webp",
+    "bytes": 125708
+   },
+   "core": {
+    "src": "./assets/journey/mid/core.webp",
+    "bytes": 9738
+   }
+  },
+  "low": {
+   "L0": {
+    "src": "./assets/journey/low/L0.webp",
+    "bytes": 171622,
+    "texel": 0.9982174688057041
+   },
+   "L1": {
+    "src": "./assets/journey/low/L1.webp",
+    "bytes": 263896,
+    "texel": 3.41204992
+   },
+   "L2": {
+    "src": "./assets/journey/low/L2.webp",
+    "bytes": 148336,
+    "texel": 12.798525886086757
+   },
+   "neural": {
+    "src": "./assets/journey/low/neural.webp",
+    "bytes": 194894
+   },
+   "circuit": {
+    "src": "./assets/journey/low/circuit.webp",
+    "bytes": 77166
+   },
+   "core": {
+    "src": "./assets/journey/low/core.webp",
+    "bytes": 6252
+   }
+  }
+ }
+}

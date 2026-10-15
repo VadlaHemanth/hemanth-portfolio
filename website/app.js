@@ -1,5 +1,5 @@
 import { PROFILE, getProject } from "./content.js?v=20261005-4";
-import { initMotion } from "./motion.js?v=20261005-4";
+import { initJourney } from "./js/journey/journey.js";
 import { initSkills } from "./skills.js?v=20261005-4";
 
 export const MOTION_STORAGE_KEY = "vh:motion";
@@ -446,12 +446,13 @@ export function initSite(doc = document, win = window) {
   initScrollEnhancements(doc, win);
   initSkills(doc);
 
-  // Playback, manifest selection, source loading, focus containment, and cleanup
-  // belong to motion.js. Site interactions are ready before it runs.
+  // The scroll journey owns the opening section. If it cannot start, the
+  // portfolio stays fully usable as a normal page.
   try {
-    Promise.resolve(initMotion()).catch(() => failOpenMotion(doc));
-  } catch {
-    failOpenMotion(doc);
+    initJourney();
+  } catch (error) {
+    console.warn("[journey]", error);
+    doc.documentElement.classList.add("journey-static");
   }
 }
 

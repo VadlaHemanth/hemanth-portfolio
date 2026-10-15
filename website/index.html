@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
-    <meta name="theme-color" content="#050608">
+    <meta name="theme-color" content="#000000">
     <meta name="description" content="Vadla Hemanth, a Computer Science and Data Science student in Hyderabad. Explore software projects, applied AI work, and a downloadable resume.">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Vadla Hemanth">
@@ -27,26 +27,14 @@
     <title>Vadla Hemanth — Software &amp; Applied AI</title>
     <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="./styles.css?v=20261005-4">
-    <link rel="stylesheet" href="./scroll-story.css?v=20261005-4">
+    <link rel="stylesheet" href="./css/tokens.css">
+    <link rel="stylesheet" href="./css/journey.css">
     <link rel="stylesheet" href="./catalog.css?v=20261005-4">
     <link rel="stylesheet" href="./skills.css?v=20261005-4">
     <script type="module" src="./app.js?v=20261005-4"></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
-
-    <div id="experience-loader" class="experience-loader" role="dialog" aria-modal="true" aria-labelledby="loader-title" hidden>
-      <div class="loader-inner">
-        <svg class="loader-logo" viewBox="0 0 44 36" aria-label="H squared"><path fill="currentColor" d="M4 7h5v11h13V7h5v27h-5V23H9v11H4z"/><path d="M31 7c0-5 9-5 9 0 0 3-5 5-9 9h9" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/></svg>
-        <p class="eyebrow">INSIDE HEMANTH / LOADING THE EXPERIENCE</p>
-        <h2 id="loader-title">A thought.<br>A world within.</h2>
-        <div class="loader-meter"><progress id="load-progress" max="100" value="0" aria-label="Video loading progress"></progress><output id="load-percent">0%</output></div>
-        <p id="load-status" role="status">Preparing a film sized for your screen.</p>
-        <div class="loader-directions" aria-label="How to explore"><span><b aria-hidden="true">↓</b> Scroll down to move forward</span><span><b aria-hidden="true">↑</b> Scroll up to go back</span></div>
-        <button id="skip-loading" class="text-link" type="button">Skip loading. Go to the work <span aria-hidden="true">↗</span></button>
-        <p class="loader-note">A sharp film, matched to your screen and device. No sound needed.</p>
-      </div>
-    </div>
 
     <div id="site-content">
       <header class="site-header">
@@ -86,30 +74,58 @@
       </header>
 
       <main id="main" tabindex="-1">
-        <section id="top" class="scroll-story" aria-labelledby="hero-title">
-          <div id="story-stage" class="story-stage">
-            <picture id="hero-portrait" class="story-poster">
-              <source media="(max-width: 600px)" srcset="./assets/portraits/hero-phone.webp" width="900" height="1600">
-              <source media="(orientation:portrait)" srcset="./assets/portraits/hero-tablet-portrait.webp" width="900" height="1200">
-              <img src="./assets/portraits/hero-wide.webp" width="1600" height="900" alt="Blue-rimmed portrait of Vadla Hemanth." fetchpriority="high" decoding="async">
-            </picture>
-            <video id="intro-video" class="story-video" muted playsinline preload="none" aria-hidden="true"></video>
-            <div class="story-scrim" aria-hidden="true"></div>
-            <div id="story-opening" class="story-opening container">
-              <p class="eyebrow"><span class="signal-dot" aria-hidden="true"></span> Data Science student &amp; builder / Hyderabad</p>
-              <h1 id="hero-title">I don’t just<br>learn.<br><span>I build.</span></h1>
-              <p class="story-positioning">Applied AI · Computer vision<br>Full-stack systems</p>
-              <div class="hero-actions"><a class="button button-primary" href="#work">Explore my work <span aria-hidden="true">↗</span></a><a class="text-link hero-direct" href="#work">Skip to work <span aria-hidden="true">↓</span></a><button id="load-experience" class="text-link" type="button" hidden>Load the scroll film <span aria-hidden="true">↓</span></button></div>
+        <section id="top" class="journey" aria-labelledby="journey-title">
+          <div class="journey-stage" data-journey-stage>
+            <canvas class="journey-canvas" data-journey-canvas aria-hidden="true"></canvas>
+            <img class="journey-poster" src="./assets/journey/poster.webp" width="1122" height="1402" alt="Portrait of Vadla Hemanth in a black hoodie, lit by a blue rim light." fetchpriority="high" decoding="async">
+            <div class="journey-hero" data-j="hero">
+              <h1 id="journey-title" class="journey-name"><span>Vadla</span> <span>Hemanth</span></h1>
+              <p class="journey-line">I don’t just learn. I build.</p>
+              <p class="journey-meta">Student builder in Hyderabad, working across applied AI, computer vision and software.</p>
+              <div class="journey-actions">
+                <a class="journey-button" href="#work" data-guide>Take the tour</a>
+                <a class="journey-skip" href="#work" data-skip>Skip the intro</a>
+              </div>
+              <p class="journey-hint" aria-hidden="true"><span></span>Scroll to enter</p>
             </div>
-            <div id="story-chapters" class="story-chapters container" aria-hidden="true">
-              <div data-chapter="mind"><span class="eyebrow">01 / THINK</span><p>Follow the<br><em>curiosity.</em></p></div>
-              <div data-chapter="build"><span class="eyebrow">02 / BUILD</span><p>From a thought<br>to a <em>system.</em></p></div>
-              <div data-chapter="work"><span class="eyebrow">03 / CREATE</span><p>Make the idea<br><em>tangible.</em></p></div>
-              <div data-chapter="return"><span class="eyebrow">04 / KEEP GOING</span><p>Building<br><em>what’s next.</em></p></div>
+            <p class="journey-thought" data-j="thought" aria-hidden="true" data-hidden></p>
+            <div class="journey-cards" data-j="cards" data-hidden>
+              <div class="journey-cards-title" data-j="cards-title">
+                <h2>Thought, compiled.</h2>
+                <p>Three projects I’m building and exploring.</p>
+              </div>
+              <a class="journey-card" data-card="satellite" href="#case-satellite">
+                <span class="journey-card-kind">Applied AI research</span>
+                <strong class="journey-card-title">Satellite research</strong>
+                <span class="journey-card-text">Comparing segmentation models in PyTorch to flag regions of satellite imagery for a closer look.</span>
+                <span class="journey-card-status">Research prototype, private</span>
+              </a>
+              <a class="journey-card journey-card-lead" data-card="attendance" href="#case-attendance">
+                <span class="journey-card-kind">Computer vision and full-stack</span>
+                <strong class="journey-card-title">Attendance ERP</strong>
+                <span class="journey-card-text">Face recognition connected to enrolment, attendance records, review and reporting for everyday college work.</span>
+                <ol class="journey-card-flow" aria-label="How it works">
+                  <li><b>Capture</b>camera frames</li>
+                  <li><b>Recognise</b>candidate matches</li>
+                  <li><b>Record</b>attendance</li>
+                  <li><b>Review</b>and report</li>
+                </ol>
+                <span class="journey-card-status">Prototype, private build</span>
+              </a>
+              <a class="journey-card" data-card="memory" href="#case-memory">
+                <span class="journey-card-kind">Agent workflow</span>
+                <strong class="journey-card-title">Vendor Payment Memory Agent</strong>
+                <span class="journey-card-text">A FastAPI demo that recalls past invoice resolutions and suggests a next step for human review.</span>
+                <span class="journey-card-status">Hackathon demo, public code</span>
+              </a>
             </div>
-            <button id="replay-intro" class="sr-only" type="button" tabindex="-1" aria-hidden="true" hidden>Return to the beginning</button>
-            <progress id="intro-progress" class="sr-only" max="20" value="0" aria-label="Scroll film progress"></progress>
-            <p id="story-status" class="sr-only" role="status"></p>
+            <div class="journey-final" data-j="final" data-hidden>
+              <p class="journey-final-line">Building what’s next.</p>
+              <a class="journey-button" href="#work" data-skip>Explore the work <svg viewBox="0 0 12 16" aria-hidden="true"><path d="M6 1v13M1.5 9.5 6 14l4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></a>
+            </div>
+            <div class="journey-progress" aria-hidden="true"><span data-j="progress"></span></div>
+            <div class="journey-load" data-j="load" aria-hidden="true"></div>
+            <p class="sr-only" data-j="status" role="status"></p>
           </div>
         </section>
 
