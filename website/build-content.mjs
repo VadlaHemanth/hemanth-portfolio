@@ -1,206 +1,256 @@
-/** Generate the compact catalog; all disclosures work without JavaScript. */
+/**
+ * Renders the content-driven portfolio sections (selected work, smaller
+ * projects, experience, education) into index.html between the ENRICHMENT
+ * markers, so every word is readable without JavaScript.
+ */
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { PROJECTS, EXPERIENCE, EXPERIENCE_GROUPS, EDUCATION } from "./content-enrichment.js";
+import { PROJECTS, EXPERIENCE, EDUCATION } from "./content-enrichment.js";
 import { getProject } from "./content.js";
 
 const escape = (value) => String(value).replace(/[&<>"']/g, (character) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
 }[character]));
 
-function link(item, context) {
-  return `<a href="${escape(item.url)}" target="_blank" rel="noopener noreferrer" aria-label="${escape(`${item.label}: ${context}`)}">${escape(item.label)} <span aria-hidden="true">↗</span></a>`;
+/** Readable lists: "A, B and C". */
+const listing = (items) => items.length < 2
+  ? items.join("")
+  : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+
+function external(item, context, className = "link") {
+  return `<a class="${className}" href="${escape(item.url)}" target="_blank" rel="noopener noreferrer">${escape(item.label)}<span class="sr-only">${context ? `, ${escape(context)}` : ""} (opens in a new tab)</span></a>`;
 }
 
-const projectArtwork = [
+/* Presentation details from the public résumé; claims stay as written there. */
+const ERP = {
+  id: "attendance",
+  building: [
+    "A Flask and PostgreSQL app that connects InsightFace recognition to enrolment, attendance records, review and reports.",
+    "Background processing with Celery and Redis, plus bulk imports.",
+    "Testing capture quality, replay scenarios and the CPU fallback for machines without a GPU.",
+  ],
+  stack: ["Python", "Flask", "PostgreSQL", "InsightFace", "Celery", "Redis"],
+};
+
+const STUDIES = [
   {
     id: "satellite",
-    file: "satellite-study.svg",
-    label: "Satellite imagery",
-    caption: "Synthetic illustration",
-    alt: "Concept illustration of satellite layers and a candidate region for review.",
-    status: "Research · Private",
-    tags: ["PyTorch", "Segmentation"],
-  },
-  {
-    id: "attendance",
-    file: "attendance-system.svg",
-    label: "Computer vision",
-    caption: "Concept diagram",
-    alt: "Concept diagram connecting a camera, vision processing and attendance records.",
-    status: "Prototype · Private",
-    tags: ["Computer vision", "Full-stack"],
+    image: "satellite.svg",
+    alt: "Illustration of stacked satellite image layers with one irregular region outlined for review. Synthetic, not real imagery.",
+    details: [
+      "Compared U-Net and DeepLabV3 in PyTorch, choosing on validation results and testing on a separate held-out set.",
+      "Exported a model for CPU inference with ONNX Runtime, and added checkpoints so training can resume.",
+    ],
+    stack: ["PyTorch", "ONNX Runtime"],
   },
   {
     id: "memory",
-    file: "memory-flow.svg",
-    label: "Agent memory",
-    caption: "Demo workflow",
-    alt: "Concept diagram of an invoice exception, recalled context and human review.",
-    status: "Hackathon demo",
-    tags: ["FastAPI", "Hindsight"],
+    image: "memory.svg",
+    alt: "Illustration of an invoice with a warning mark, a stack of earlier resolutions, and a person reviewing the suggestion.",
+    details: [
+      "Recalls earlier resolutions through Hindsight, with a local JSONL fallback when the memory service is unavailable.",
+      "Checks GSTIN, HSN and purchase-order fields, and catches duplicate invoices, before it suggests anything.",
+    ],
+    stack: ["Python", "FastAPI", "Hindsight", "JSONL"],
   },
 ];
 
-function primaryProject(artwork) {
-  const project = getProject(artwork.id);
-  const title = project.id === "memory" ? `${project.title} ${project.subtitle}` : project.title;
-  return `<article class="work-entry" aria-labelledby="${project.id}-title" data-reveal>
-              <figure class="project-figure ${project.id}-figure">
-                <img src="./assets/${artwork.file}" width="800" height="500" loading="lazy" decoding="async" alt="${escape(artwork.alt)}">
-                <figcaption><span>${escape(artwork.label)}</span><span>${escape(artwork.caption)}</span></figcaption>
-              </figure>
-              <div class="work-copy">
-                <div class="work-meta"><span class="work-number">${project.number} / 03</span><p class="project-status">${escape(artwork.status)}</p></div>
-                <h3 id="${project.id}-title">${escape(title)}</h3>
-                <p class="work-description">${escape(project.description)}</p>
-                <ul class="work-tags" aria-label="Project focus">${artwork.tags.map((tag) => `<li>${escape(tag)}</li>`).join("")}</ul>
-                <div class="work-actions">
-                  <button class="case-button" type="button" data-project="${project.id}" aria-haspopup="dialog" aria-label="View ${escape(title)} case study" hidden>Case study <span aria-hidden="true">↗</span></button>
-                  <button class="hood-toggle" type="button" data-hood-toggle aria-expanded="false" aria-controls="pipeline-${project.id}" aria-label="View ${escape(title)} flow" hidden>View flow <span class="disclosure-symbol" aria-hidden="true">+</span></button>
+/* Line icons for the four stations of the attendance flow. */
+const FLOW_ICONS = [
+  '<rect x="3" y="6.5" width="18" height="13" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8.5 6.5 10 4h4l1.5 2.5"/>',
+  '<path d="M4 8.5V5h3.5M16.5 5H20v3.5M20 15.5V19h-3.5M7.5 19H4v-3.5"/><circle cx="12" cy="10.5" r="2.6"/><path d="M8 16.5c.9-1.8 2.3-2.6 4-2.6s3.1.8 4 2.6"/>',
+  '<rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 9.5h16M4 14.5h16M9.5 9.5V20"/>',
+  '<circle cx="10" cy="8" r="3"/><path d="M4 19.5c.8-3.1 3-4.7 6-4.7 1.1 0 2.1.2 3 .6"/><path d="m14.5 17.5 2.2 2.2 4.3-4.4"/>',
+];
+
+const projectTitle = (project) => (project.id === "memory" ? `${project.title} ${project.subtitle}` : project.title);
+
+function flow(project) {
+  const steps = project.architecture.map((step, index) => `
+                  <li class="flow-step">
+                    <span class="flow-node" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false">${FLOW_ICONS[index]}</svg></span>${index < project.architecture.length - 1 ? `
+                    <span class="flow-wire" aria-hidden="true"></span>` : ""}
+                    <p class="flow-name">${escape(step.title)}</p>
+                    <p class="flow-text">${escape(step.text)}</p>
+                  </li>`).join("");
+  return `<ol class="flow" aria-label="How it works">${steps}
+                </ol>`;
+}
+
+function feature() {
+  const project = getProject(ERP.id);
+  const title = projectTitle(project);
+  return `<article id="case-${project.id}" class="feature" aria-labelledby="${project.id}-title">
+              <div class="feature-head">
+                <h3 id="${project.id}-title" class="feature-title">${escape(title)}</h3>
+                <p class="status status-live">${escape(project.status)}</p>
+              </div>
+              <div class="feature-intro">
+                <p class="feature-summary">${escape(project.description)}</p>
+                <p class="feature-problem">${escape(project.problem)}</p>
+              </div>
+              <div class="feature-flow">
+                ${flow(project)}
+              </div>
+              <div class="feature-notes">
+                <div class="note">
+                  <h4 class="note-title">What I’m building</h4>
+                  <ul class="ticks">${ERP.building.map((line) => `<li>${escape(line)}</li>`).join("")}</ul>
                 </div>
-                <details id="case-${project.id}" class="case-fallback">
-                  <summary>Read case study <span class="sr-only">for ${escape(title)}</span><span aria-hidden="true">↗</span></summary>
-                  <dl>
-                    <dt>The problem</dt><dd>${escape(project.problem)}</dd>
-                    <dt>My work</dt><dd>${escape(project.contribution)}</dd>
-                    <dt>Approach</dt><dd>${project.architecture.map((step) => escape(step.title)).join(" → ")}</dd>
-                    <dt>Project notes</dt><dd>${escape(project.evidence)}</dd>
-                    <dt>In context</dt><dd>${project.limitations.map(escape).join(" ")}</dd>
-                  </dl>
-                  ${project.links.length ? `<div class="archive-links">${project.links.map((item) => link(item, title)).join("")}</div>` : ""}
-                </details>
-                <div class="work-study">
-                  <div id="pipeline-${project.id}" class="pipeline-panel" hidden>
-                    <p class="eyebrow pipeline-label">The approach</p>
-                    <ol class="pipeline">${project.architecture.map((step) => `<li><strong>${escape(step.title)}</strong><span>${escape(step.text)}</span></li>`).join("")}</ol>
-                  </div>
+                <div class="note">
+                  <h4 class="note-title">Where it stands</h4>
+                  <p>${escape(project.evidence)}</p>
+                  <p class="note-link">${project.links.map((item) => external(item, title)).join(" ")}</p>
+                  <p class="fine">${project.limitations.map(escape).join(" ")}</p>
+                </div>
+                <div class="note">
+                  <h4 class="note-title">Built with</h4>
+                  <p>${escape(listing(ERP.stack))}.</p>
                 </div>
               </div>
             </article>`;
 }
 
-const selectedWork = `        <section id="work" class="work section container" aria-labelledby="work-title">
-          <div class="section-heading" data-reveal>
-            <p class="section-index eyebrow"><span>01</span> / Selected work</p>
-            <div class="heading-row">
-              <h2 id="work-title">Ideas, <span class="text-dim">put to work.</span></h2>
-              <p class="section-intro">Three projects I’m building and exploring.</p>
+function study(entry) {
+  const project = getProject(entry.id);
+  const title = projectTitle(project);
+  const live = project.links.length > 0;
+  return `<article id="case-${project.id}" class="study" aria-labelledby="${project.id}-title">
+                <figure class="study-figure">
+                  <img src="./assets/work/${entry.image}" width="640" height="400" loading="lazy" decoding="async" alt="${escape(entry.alt)}">
+                </figure>
+                <h3 id="${project.id}-title" class="study-title">${escape(title)}</h3>
+                <p class="status${live ? " status-public" : ""}">${escape(project.status)}</p>
+                <p class="study-summary">${escape(project.description)}</p>
+                <ul class="ticks">${entry.details.map((line) => `<li>${escape(line)}</li>`).join("")}</ul>
+                <p class="fine">${project.limitations.map(escape).join(" ")}</p>
+                <p class="study-foot"><span class="study-stack">Built with ${escape(listing(entry.stack))}.</span>${live ? ` ${project.links.map((item) => external(item, title)).join(" ")}` : ""}</p>
+              </article>`;
+}
+
+const selectedWork = `<section id="work" class="sec sec-work" aria-labelledby="work-title">
+            <div class="wrap">
+              <div class="sec-head">
+                <h2 id="work-title" class="sec-title">Selected work</h2>
+                <p class="sec-lede">The three projects I’d show you first.</p>
+              </div>
+            ${feature()}
+              <div class="pair">
+              ${STUDIES.map(study).join("\n              ")}
+              </div>
             </div>
-          </div>
-          <div class="work-grid">${projectArtwork.map(primaryProject).join("\n")}</div>
-        </section>`;
+          </section>`;
 
-const projects = PROJECTS.filter((project) => !["attendance-public", "vendor-memory"].includes(project.id));
-const featured = projects.filter((project) => project.featured);
-const remaining = projects.filter((project) => !project.featured);
-const experienceById = new Map(EXPERIENCE.map((item) => [item.id, item]));
-const groupedIds = EXPERIENCE_GROUPS.flatMap((group) => group.members);
-
-if (featured.length !== 4) throw new Error("The compact catalog must feature four projects.");
-if (new Set(groupedIds).size !== groupedIds.length
-  || groupedIds.length !== EXPERIENCE.length
-  || groupedIds.some((id) => !experienceById.has(id))) {
-  throw new Error("Every experience entry must belong to exactly one category.");
+/* Smaller projects: everything public that is not one of the three above. */
+const SMALL_ORDER = [
+  "drive-uploader", "proofa", "data-structures-study-tool",
+  "drawing-study-tool", "serverless-web", "portfolio-public",
+];
+const projectById = new Map(PROJECTS.map((item) => [item.id, item]));
+const smaller = SMALL_ORDER.map((id) => projectById.get(id));
+if (smaller.some((item) => !item || !item.links.length)) {
+  throw new Error("Every smaller project must exist and have a public link.");
 }
 
-function projectRow(project, index) {
-  return `<article class="archive-row" id="project-${escape(project.id)}">
-              <span class="archive-number" aria-hidden="true">${String(index + 4).padStart(2, "0")}</span>
-              <div class="archive-copy">
-                <h3>${escape(project.title)}</h3>
-                <p>${escape(project.description)}</p>
-                <span class="archive-status">${escape(project.status)}</span>
-              </div>
-              <div class="archive-links">${project.links.map((item) => link(item, project.title)).join("")}</div>
-            </article>`;
-}
-
-function experienceNote(id) {
-  const item = experienceById.get(id);
-  return `<li id="experience-${escape(item.id)}">
-                  <h4>${escape(item.title)} <span>${escape(item.status)}</span></h4>
-                  <p>${escape(item.description)}</p>
-                  ${item.caseFacts.length ? `<p class="experience-context">${item.caseFacts.map(escape).join(" ")}</p>` : ""}
-                  ${item.links.length ? `<div class="archive-links">${item.links.map((entry) => link(entry, item.title)).join("")}</div>` : ""}
+function smallProject(project) {
+  return `<li class="index-item" id="project-${escape(project.id)}">
+                  <h3 class="index-title">${escape(project.title)}</h3>
+                  <p class="index-text">${escape(project.description)}</p>
+                  <p class="index-meta"><span class="index-kind">${escape(project.status)}</span>${project.links.map((item) => external(item, project.title)).join("")}</p>
                 </li>`;
 }
 
-function experienceGroup(group, index) {
-  return `<details class="experience-item" id="experience-${escape(group.id)}">
-              <summary>
-                <span class="experience-index" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>
-                <span><strong>${escape(group.title)}</strong><small>${escape(group.description)}</small></span>
-                <span class="experience-plus" aria-hidden="true">+</span>
-              </summary>
-              <div class="experience-detail">
-                <ul class="experience-notes">${group.members.map(experienceNote).join("\n")}</ul>
+const smallerProjects = `<section id="more-work" class="sec sec-more" aria-labelledby="more-work-title">
+            <div class="wrap">
+              <div class="sec-head">
+                <h2 id="more-work-title" class="sec-title">Smaller projects</h2>
+                <p class="sec-lede">Tools and sites I’ve made. All of them are public.</p>
               </div>
-            </details>`;
+              <ul class="index">
+                ${smaller.map(smallProject).join("\n                ")}
+              </ul>
+            </div>
+          </section>`;
+
+/* Experience stays short: the work done with or for other people. */
+const EXPERIENCE_HIGHLIGHTS = [
+  { id: "design-content", kind: "Design" },
+  { id: "faculty-timetable-automation", kind: "Automation" },
+  { id: "institutional-web", kind: "Web" },
+  { id: "technical-events", kind: "Events" },
+  { id: "hackathonz", kind: "Hackathon" },
+  { id: "school-tutoring", kind: "Teaching" },
+  { id: "model-un", kind: "Debate" },
+];
+const experienceById = new Map(EXPERIENCE.map((item) => [item.id, item]));
+if (EXPERIENCE_HIGHLIGHTS.some(({ id }) => !experienceById.has(id))) {
+  throw new Error("Every experience highlight must exist in content-enrichment.js.");
 }
 
-const currentStudy = EDUCATION.filter((item) => item.stage === "current");
-const priorStudy = EDUCATION.filter((item) => item.stage === "previous");
-const education = currentStudy.map((item) => `<li>
-              <span class="education-program">${escape(item.program)}</span>
-              <strong>${escape(item.shortName || item.institution)}</strong>
-              <p>${escape(item.status)}</p>
-              <small>${escape(item.start)} — ${escape(item.expectedCompletion)} (expected)</small>
-            </li>`).join("\n");
-const previousEducation = priorStudy.map((item) =>
-  `<li><strong>${escape(item.program)}</strong><span>${escape(item.institution)}</span></li>`).join("");
+function experienceRow({ id, kind }) {
+  const item = experienceById.get(id);
+  const facts = id === "faculty-timetable-automation" ? ` ${item.caseFacts.map(escape).join(" ")}` : "";
+  const links = item.links.length ? ` ${item.links.map((entry) => external(entry, item.title)).join(" ")}` : "";
+  return `<li class="ledger-row" id="experience-${escape(item.id)}">
+                  <h3 class="ledger-title">${escape(item.title)}</h3>
+                  <p class="ledger-text">${escape(item.description)}${facts}${links}</p>
+                  <p class="ledger-kind">${escape(kind)}</p>
+                </li>`;
+}
 
-const content = `<!-- ENRICHMENT:START -->
-        <section id="more-work" class="section container more-work" aria-labelledby="more-work-title">
-          <p class="section-index eyebrow"><span>02</span> / Smaller projects</p>
-          <div class="heading-row">
-            <h2 id="more-work-title">Small tools. <span class="text-dim">Real questions.</span></h2>
-            <p class="section-intro">A few more things I’ve made.</p>
-          </div>
-          <div class="project-archive">${featured.map(projectRow).join("\n")}</div>
-          ${remaining.length ? `<details class="archive-more">
-            <summary>More public work <span class="archive-count">${remaining.length}</span><span class="experience-plus" aria-hidden="true">+</span></summary>
-            <div class="project-archive">${remaining.map((item, index) => projectRow(item, index + featured.length)).join("\n")}</div>
-          </details>` : ""}
-        </section>
-
-        <section id="experience" class="section experience-section" aria-labelledby="experience-title">
-          <div class="container">
-            <p class="section-index eyebrow"><span>03</span> / Experience</p>
-            <div class="heading-row">
-              <h2 id="experience-title">The work <span class="text-dim">around the work.</span></h2>
-              <p class="section-intro">Building, explaining and working with people.</p>
+const experience = `<section id="experience" class="sec sec-experience" aria-labelledby="experience-title">
+            <div class="wrap">
+              <div class="sec-head">
+                <h2 id="experience-title" class="sec-title">Experience</h2>
+              </div>
+              <ul class="ledger">
+                ${EXPERIENCE_HIGHLIGHTS.map(experienceRow).join("\n                ")}
+              </ul>
+              <p class="ledger-after">I also prepare technical proposals, write study guides and edit copy for campus events.</p>
             </div>
-            <div class="experience-list">${EXPERIENCE_GROUPS.map(experienceGroup).join("\n")}</div>
-          </div>
-        </section>
+          </section>`;
 
-        <section id="journey" class="section container education-section" aria-labelledby="journey-title">
-          <p class="section-index eyebrow"><span>04</span> / Education</p>
-          <div class="heading-row">
-            <h2 id="journey-title">The foundations.</h2>
-            <a class="text-link" href="./resume.html">View resume <span aria-hidden="true">↗</span></a>
-          </div>
-          <ul class="education-history">${education}</ul>
-          <div class="education-earlier">
-            <p>Previously</p>
-            <ul class="education-prior">${previousEducation}</ul>
-          </div>
-        </section>
-<!-- ENRICHMENT:END -->`;
+const current = EDUCATION.filter((item) => item.stage === "current");
+const previous = EDUCATION.filter((item) => item.stage === "previous");
+if (current.length !== 2 || previous.length !== 2) throw new Error("Education expects two current and two earlier entries.");
+
+function degree(item) {
+  // Acronyms people actually use (NNRG) follow the full name; "IIT Madras" would only repeat it.
+  const school = /^[A-Z]{2,}$/.test(item.shortName ?? "")
+    ? `${item.institution} (${item.shortName})`
+    : item.institution;
+  return `<li class="degree">
+                  <h3 class="degree-name">${escape(item.program)}</h3>
+                  <p class="degree-school">${escape(school)}</p>
+                  <p class="degree-dates">${escape(item.start)} – ${escape(item.expectedCompletion)} (expected)</p>
+                </li>`;
+}
+
+const education = `<section id="education" class="sec sec-education" aria-labelledby="education-title">
+            <div class="wrap">
+              <div class="sec-head">
+                <h2 id="education-title" class="sec-title">Education</h2>
+              </div>
+              <ul class="degrees">
+                ${current.map(degree).join("\n                ")}
+              </ul>
+              <p class="before">Before that: ${escape(previous[0].program)} at ${escape(previous[0].institution)}, and ${escape(previous[1].program)} at ${escape(previous[1].institution)}.</p>
+            </div>
+          </section>`;
+
+const content = `<!-- ENRICHMENT:START (generated by build-content.mjs; edit the content modules instead) -->
+          ${selectedWork}
+
+          ${smallerProjects}
+
+          ${experience}
+
+          ${education}
+          <!-- ENRICHMENT:END -->`;
 
 const path = fileURLToPath(new URL("./index.html", import.meta.url));
-let html = await readFile(path, "utf8");
-const workSection = /        <section id="work"[\s\S]*?        <\/section>/;
-if (!workSection.test(html)) throw new Error("Could not find the selected-work section.");
-html = html.replace(workSection, selectedWork);
-const marker = /<!-- ENRICHMENT:START -->[\s\S]*?<!-- ENRICHMENT:END -->/;
-if (marker.test(html)) {
-  html = html.replace(marker, content);
-} else if (html.includes('        <section id="about"')) {
-  html = html.replace('        <section id="about"', `${content}\n\n        <section id="about"`);
-} else {
-  throw new Error("Could not find the catalog insertion point in index.html.");
-}
-await writeFile(path, html);
-console.log(`Rendered ${featured.length} featured tools, ${remaining.length} expandable projects, ${EXPERIENCE_GROUPS.length} experience categories and one education section.`);
+const html = await readFile(path, "utf8");
+const marker = /<!-- ENRICHMENT:START[\s\S]*?<!-- ENRICHMENT:END -->/;
+if (!marker.test(html)) throw new Error("Could not find the ENRICHMENT markers in index.html.");
+await writeFile(path, html.replace(marker, () => content));
+console.log(`Rendered 3 selected projects, ${smaller.length} smaller projects, ${EXPERIENCE_HIGHLIGHTS.length} experience highlights and one education section.`);

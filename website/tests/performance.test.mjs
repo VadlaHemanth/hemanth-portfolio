@@ -142,7 +142,8 @@ test('Pages cache rules never join contradictory lifetimes, and mutable code rev
   for (const route of [
     '/','/index.html','/resume','/resume.html','/404','/404.html',
     '/app.js','/motion.js','/project-screens.js','/content.js',
-    '/styles.css','/scroll-story.css','/catalog.css','/resume.css',
+    '/styles.css','/scroll-story.css','/resume.css',
+    '/css/tokens.css','/css/sections.css','/js/sections.js',
     '/robots.txt','/sitemap.xml','/assets/motion/manifest.json','/assets/motion/project-surfaces.json',
     '/assets/Vadla-Hemanth-Resume.pdf','/assets/social-preview.jpg',
   ]) {
@@ -170,7 +171,7 @@ test('the release bypasses previously fresh four-hour script and style caches, i
     .map(match=>new URL(match[1],'https://portfolio.example/'));
   const entry=linked.find(url=>url.pathname==='/app.js'), version=entry?.searchParams.get('v');
   assert(version,'Entry module needs a versioned URL for upgrades from the initial cache policy');
-  for(const name of ['app.js','styles.css','scroll-story.css','catalog.css']) {
+  for(const name of ['app.js','styles.css','scroll-story.css','css/tokens.css','css/sections.css','js/sections.js']) {
     assert.equal(linked.find(url=>url.pathname==='/'+name)?.searchParams.get('v'),version,`${name}: matching release version`);
   }
   for(const name of ['app.js','motion.js']) {
@@ -185,8 +186,9 @@ test('the release bypasses previously fresh four-hour script and style caches, i
 });
 
 test('critical text stays bounded without imposing a film or portrait fidelity budget', async () => {
-  const files=['index.html','app.js','motion.js','project-screens.js','content.js','styles.css','scroll-story.css','catalog.css'];
-  for(const file of ['skills.js','skills.css']) {
+  const files=['index.html','app.js','motion.js','project-screens.js','content.js','styles.css','scroll-story.css',
+    'css/tokens.css','css/sections.css','js/sections.js'];
+  for(const file of ['catalog.css','skills.js','skills.css']) {
     if(await stat(path.join(website,file)).then(()=>true,()=>false))files.push(file);
   }
   const payloads=await Promise.all(files.map(file=>readFile(path.join(website,file))));

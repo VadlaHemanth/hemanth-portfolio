@@ -54,7 +54,7 @@ export const PROJECTS = Object.freeze([
     status: "Self-hosted tool",
     featured: true,
     description:
-      "Browser-to-Drive uploads with chunking, retry and resume.",
+      "Uploads photos and videos from a browser to Google Drive, in chunks that retry and resume.",
     tags: ["FastAPI", "JavaScript", "Rclone", "Resumable uploads"],
     caseFacts: [
       "Chunked uploads, a virtualized file list and progress feedback.",
@@ -74,10 +74,10 @@ export const PROJECTS = Object.freeze([
     title: "Proofa",
     subtitle: "From learning to a résumé",
     category: "Frontend prototypes",
-    status: "Frontend prototype",
+    status: "Front-end prototype",
     featured: true,
     description:
-      "A place to collect project work and prepare a résumé.",
+      "A front-end prototype for collecting project work and turning it into a résumé. Some responses are simulated.",
     tags: ["React", "TypeScript", "Vite", "Tailwind CSS"],
     caseFacts: [
       "Onboarding, a proof locker, planning and résumé flows.",
@@ -99,7 +99,7 @@ export const PROJECTS = Object.freeze([
     category: "Web design",
     status: "Earlier version",
     description:
-      "An earlier React portfolio, published on GitHub Pages.",
+      "My previous portfolio, built with React, Vite and Framer Motion.",
     tags: ["React", "Vite", "Tailwind CSS", "Framer Motion"],
     caseFacts: [
       "React, Vite, Tailwind CSS and Framer Motion.",
@@ -123,9 +123,9 @@ export const PROJECTS = Object.freeze([
     title: "EduPeak",
     subtitle: "Serverless online-tuition website",
     category: "Web applications",
-    status: "Web project",
+    status: "Website",
     description:
-      "An online-tuition website using serverless hosting and APIs.",
+      "An online-tuition website on Cloudflare Pages and Workers.",
     tags: ["Cloudflare Pages", "Cloudflare Workers", "APIs"],
     caseFacts: [
       "Development work with Cloudflare Pages, Workers and API integration.",
@@ -143,7 +143,7 @@ export const PROJECTS = Object.freeze([
     status: "Study tool",
     featured: true,
     description:
-      "Topic-based question banks with sources and revision progress.",
+      "Question banks by topic, with sources and revision progress.",
     tags: ["JavaScript", "Syllabus mapping", "Responsive UI"],
     caseFacts: [
       "Unit filters, question variants, source references and editable progress.",
@@ -161,7 +161,7 @@ export const PROJECTS = Object.freeze([
     status: "Study tool",
     featured: true,
     description:
-      "Drawing questions, diagrams and solutions in one study view.",
+      "Engineering drawing questions, diagrams and solutions in one study view.",
     tags: ["HTML", "JavaScript", "Technical diagrams"],
     caseFacts: [
       "Expandable topics, source labels and mobile-friendly solution navigation.",
@@ -206,11 +206,11 @@ export const EXPERIENCE = Object.freeze([
   },
   {
     id: "institutional-web",
-    title: "Institution-facing website design",
+    title: "Education-software website",
     category: "Web design experience",
     status: "Web project",
     description:
-      "Building responsive pages, themes and navigation for an education-software concept.",
+      "Responsive pages, themes and navigation for an education-software concept, in Next.js, TypeScript and Tailwind CSS.",
     tags: ["Next.js", "TypeScript", "Tailwind CSS", "Static export"],
     caseFacts: ["Next.js, TypeScript and Tailwind CSS, with static export."],
     links: [],
@@ -218,11 +218,11 @@ export const EXPERIENCE = Object.freeze([
   },
   {
     id: "design-content",
-    title: "Digital design for UME Interiors",
+    title: "Design for UME Interiors",
     category: "Creative experience",
     status: "Design work",
     description:
-      "Creating promotional posters, web banners and landing-page content for UME Interiors.",
+      "Posters, web banners and landing-page content for an interiors business.",
     tags: ["Graphic design", "Web content", "Visual communication"],
     caseFacts: [],
     links: [
@@ -336,11 +336,11 @@ export const EXPERIENCE = Object.freeze([
   },
   {
     id: "technical-events",
-    title: "Technical event leadership",
+    title: "CodeMania and C Hunt",
     category: "Campus experience",
     status: "Event coordination",
     description:
-      "Helped organise and lead CodeMania and C Hunt technical events at NNRG.",
+      "Helped organise and lead two technical events at NNRG.",
     tags: ["Event coordination", "Teamwork", "Communication"],
     caseFacts: [],
     links: [],
@@ -351,7 +351,7 @@ export const EXPERIENCE = Object.freeze([
     title: "Model United Nations",
     category: "Campus experience",
     status: "Participation",
-    description: "Participated as a delegate at NNRG MUN 2026.",
+    description: "A delegate at NNRG MUN 2026.",
     tags: ["Public speaking", "Discussion"],
     caseFacts: [],
     links: [],
@@ -371,11 +371,11 @@ export const EXPERIENCE = Object.freeze([
   },
   {
     id: "hackathonz",
-    title: "HackathonZ — Hack2Hire",
+    title: "HackathonZ: Hack2Hire",
     category: "Hackathon experience",
     status: "Participation",
     description:
-      "Took part in HackathonZ — Hack2Hire at Malla Reddy University, building and presenting with a team.",
+      "Built and presented a prototype with a team at Malla Reddy University.",
     tags: ["Teamwork", "Prototyping", "Presentation"],
     caseFacts: [
       "Learning to scope a prototype and respond to feedback under time constraints.",
@@ -423,11 +423,11 @@ export const EXPERIENCE = Object.freeze([
   },
   {
     id: "school-tutoring",
-    title: "School-level tutoring",
+    title: "Tutoring",
     category: "Teaching experience",
     status: "Tutoring",
     description:
-      "Supporting school-level learners with explanations and study guidance.",
+      "Helping school students with explanations and study plans.",
     tags: ["Tutoring", "Explanation", "Learning support"],
     caseFacts: [],
     links: [],
@@ -509,10 +509,10 @@ export const EXPERIENCE = Object.freeze([
     category: "Document automation",
     status: "Document automation",
     description:
-      "Using Python to turn master Excel timetables into individual faculty documents in Excel, Word and PDF.",
+      "Python that turns master Excel timetables into each faculty member’s own Excel, Word and PDF files.",
     tags: ["Python", "Spreadsheet automation", "Document generation"],
     caseFacts: [
-      "Includes merged cells, colour coding and page breaks. Timetable conflicts remain visible for review.",
+      "Merged cells, colour coding and page breaks carry over, and clashes stay visible for review.",
     ],
     links: [],
     evidenceStatus: "evidence",
@@ -598,7 +598,7 @@ export const EDUCATION = Object.freeze([
   },
   {
     id: "nnrg",
-    institution: "Nalla Narasimha Reddy Education Society's Group of Institutions",
+    institution: "Nalla Narasimha Reddy Education Society’s Group of Institutions",
     shortName: "NNRG",
     program: "B.Tech in Computer Science",
     start: "August 2025",

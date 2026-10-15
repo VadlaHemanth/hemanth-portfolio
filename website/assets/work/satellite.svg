@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="80 60 640 400" fill="none">
+  <title>Satellite research: layered imagery and one candidate region</title>
+  <desc>An original synthetic illustration, not a satellite image or a real incident. Three stacked image layers carry contour lines, and one irregular region on the top layer is outlined for a person to review. The outline is a lead, not evidence of a spill or of which vessel was involved.</desc>
+  <defs>
+    <linearGradient id="top" x1="190" y1="140" x2="560" y2="400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0c1624"/>
+      <stop offset="1" stop-color="#03060b"/>
+    </linearGradient>
+    <linearGradient id="sea" x1="250" y1="150" x2="520" y2="330" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2b7bff" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#2b7bff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="441" cy="250" r="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2b7bff" stop-opacity=".34"/>
+      <stop offset=".45" stop-color="#2b7bff" stop-opacity=".1"/>
+      <stop offset="1" stop-color="#2b7bff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="slick" cx="441" cy="252" r="70" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9cc6ff" stop-opacity=".32"/>
+      <stop offset="1" stop-color="#2b7bff" stop-opacity=".06"/>
+    </radialGradient>
+    <clipPath id="plane">
+      <path d="m135 226 254-130 268 140-254 138z"/>
+    </clipPath>
+  </defs>
+  <path d="m135 286 254-130 268 140-254 138z" fill="#020407" stroke="#9cc6ff" stroke-opacity=".12"/>
+  <path d="m135 256 254-130 268 140-254 138z" fill="#04080e" stroke="#9cc6ff" stroke-opacity=".18"/>
+  <path d="M135 226v60m268 88v60m254-198v60" stroke="#9cc6ff" stroke-opacity=".14" stroke-dasharray="2 6"/>
+  <path d="m135 226 254-130 268 140-254 138z" fill="url(#top)"/>
+  <g clip-path="url(#plane)">
+    <path d="M276 112c65 7 8 54 70 82s48 40 114 57 59 59 107 70l-87 111-305-185z" fill="url(#sea)"/>
+    <g stroke="#9cc6ff" stroke-opacity=".13">
+      <path d="M170 124c73 19 112 44 124 65s-67 44-49 64 85 26 103 51-43 30-2 54 106 18 130 37"/>
+      <path d="M188 115c73 19 112 44 124 65s-67 44-49 64 85 26 103 51-43 30-2 54 106 18 130 37"/>
+      <path d="M205 105c73 19 112 44 124 65s-67 44-49 64 85 26 103 51-43 30-2 54 106 18 130 37"/>
+      <path d="M223 96c73 19 112 44 124 65s-67 44-49 64 85 26 103 51-43 30-2 54 106 18 130 37"/>
+      <path d="M241 86c73 19 112 44 124 65s-67 44-49 64 85 26 103 51-43 30-2 54 106 18 130 37"/>
+      <path d="M260 77c73 19 112 44 124 65s-67 44-49 64 85 26 103 51-43 30-2 54 106 18 130 37"/>
+    </g>
+    <path d="m162 200 336 177m-254-221 333 173m-405-76 296-150m-213 194 293-151" stroke="#9cc6ff" stroke-opacity=".07"/>
+    <circle cx="441" cy="250" r="120" fill="url(#glow)"/>
+    <path d="M390 222c28-22 72-22 82-4s-5 18 20 29 20 25-5 35-37-8-67-3-55 0-48-16 3-27 18-41z" fill="url(#slick)" stroke="#2b7bff" stroke-width="1.5"/>
+    <path d="M398 232c20-15 49-16 57-4s-5 14 12 22 18 17 0 23-27-7-47-2-39-4-32-14 0-16 10-25z" stroke="#9cc6ff" stroke-opacity=".55" stroke-width=".8"/>
+  </g>
+  <path d="m135 226 254-130 268 140-254 138z" stroke="#9cc6ff" stroke-opacity=".34"/>
+  <path d="M441 250V128l58-30h86" stroke="#2b7bff" stroke-opacity=".8"/>
+  <circle cx="585" cy="98" r="3" fill="#9cc6ff"/>
+  <circle cx="441" cy="250" r="13" stroke="#9cc6ff" stroke-opacity=".5"/>
+  <circle cx="441" cy="250" r="3.5" fill="#edf1f7"/>
+</svg>

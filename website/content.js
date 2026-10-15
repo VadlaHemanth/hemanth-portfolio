@@ -17,40 +17,40 @@ export const PROJECTS = Object.freeze([
     title: "Attendance ERP",
     subtitle: "Automatic Attendance System",
     category: "Computer vision / Full-stack systems",
-    status: "Prototype · Private implementation",
+    status: "In-progress prototype. The code is private.",
     description:
-      "Connecting face recognition, attendance records and everyday college workflows.",
+      "A college attendance system where recognising a face is only the first step.",
     problem:
-      "Recognising a face is only one step. Attendance also needs enrolment, review and useful records.",
+      "Attendance also needs enrolment, records that people can check, and reports. I’m building those parts too.",
     contribution:
-      "Developing an attendance ERP prototype covering camera capture, enrolment, record review and reporting.",
+      "My work spans the vision pipeline, application data, background processing and testing.",
     architecture: [
       {
         title: "Capture",
-        text: "Capture camera frames for face recognition.",
+        text: "Camera frames come in for recognition.",
       },
       {
-        title: "Process",
-        text: "Use computer vision to produce candidate matches.",
+        title: "Match",
+        text: "InsightFace suggests likely matches among enrolled students.",
       },
       {
         title: "Record",
-        text: "Connect matches to attendance records.",
+        text: "Each match becomes an attendance record.",
       },
       {
         title: "Review",
-        text: "Make records and reports available for review.",
+        text: "A person checks uncertain matches. Records feed the reports.",
       },
     ],
     evidence:
-      "The linked repository is an earlier attendance prototype. The current ERP implementation is private.",
+      "The ERP code is private. The public repository is an earlier, simpler attendance prototype, not the current implementation.",
     limitations: [
-      "Camera conditions affect recognition; uncertain matches need review.",
-      "The diagram is illustrative. Student photos and attendance records stay private.",
+      "Camera conditions affect recognition, so uncertain matches need review.",
+      "Student photos and attendance records stay private.",
     ],
     links: [
       {
-        label: "Earlier public snapshot",
+        label: "Earlier prototype on GitHub",
         url: "https://github.com/Vadla-Hemanth/Automatic-Attendance-System",
       },
     ],
@@ -61,13 +61,13 @@ export const PROJECTS = Object.freeze([
     title: "Satellite research",
     subtitle: "Oil-spill screening",
     category: "Applied AI / Geospatial research",
-    status: "Research prototype · Private",
+    status: "Research prototype. The code is private.",
     description:
-      "Exploring satellite imagery to flag possible oil spills for closer review.",
+      "Screening satellite images for possible oil spills, so a person knows where to look more closely.",
     problem:
       "A suspicious region in a satellite image needs a closer look before anyone can draw a conclusion.",
     contribution:
-      "Comparing segmentation models in PyTorch, testing checkpoint recovery and running inference experiments.",
+      "Compared segmentation models in PyTorch, exported a model for CPU inference and added checkpoints so training can resume.",
     architecture: [
       {
         title: "Observe",
@@ -87,9 +87,9 @@ export const PROJECTS = Object.freeze([
       },
     ],
     evidence:
-      "A private research prototype, illustrated here with synthetic imagery.",
+      "A private research prototype. The illustration is synthetic, not real imagery.",
     limitations: [
-      "Screened regions are candidates for investigation, not confirmed oil spills.",
+      "A flagged region is a lead to investigate, not a confirmed oil spill.",
       "Imagery alone cannot establish which vessel was responsible.",
     ],
     links: [],
@@ -100,9 +100,9 @@ export const PROJECTS = Object.freeze([
     title: "Vendor Payment",
     subtitle: "Memory Agent",
     category: "Agent systems / Workflow design",
-    status: "Hackathon demo",
+    status: "Hackathon demo. The code is public.",
     description:
-      "Reusing past invoice resolutions to help review recurring payment exceptions.",
+      "A hackathon demo that remembers how earlier invoice exceptions were resolved, and suggests a next step for a person to approve.",
     problem:
       "Recurring invoice exceptions often mean searching for the same resolution again.",
     contribution:
@@ -128,11 +128,11 @@ export const PROJECTS = Object.freeze([
     evidence:
       "Public hackathon demo using example invoices and vendors.",
     limitations: [
-      "Example records are demonstration data, not client records.",
-      "Suggestions need human review. The demo does not authorise or execute payments.",
+      "It runs on example invoices and vendors, not client records.",
+      "A person makes every decision. The demo does not authorise or execute payments.",
     ],
     links: [
-      { label: "View demo code", url: "https://github.com/VadlaHemanth/vendor-payment-memory-agent" },
+      { label: "Code on GitHub", url: "https://github.com/VadlaHemanth/vendor-payment-memory-agent" },
     ],
   },
 ]);
