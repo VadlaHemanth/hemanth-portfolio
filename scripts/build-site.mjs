@@ -10,30 +10,30 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 const source=path.join(root,'website'),output=path.join(root,'dist');
 await import('../website/build-content.mjs');
 const files=[
-  'index.html','resume.html','404.html','styles.css','scroll-story.css',
-  'resume.css','app.js','motion.js','project-screens.js','content.js','motion-curve.js',
+  'index.html','resume.html','404.html','styles.css',
+  'resume.css','app.js',
   '_headers','_redirects','robots.txt','sitemap.xml',
 ];
-// Whole directories of public runtime files: shared tokens, section styles and scripts, fonts.
-const directories=['css','js','fonts'];
+// Whole directories of public runtime files: tokens and styles, the journey and section
+// scripts, vendored Lenis, and self-hosted fonts.
+const directories=['css','js','vendor','fonts'];
 await rm(output,{recursive:true,force:true});
 await mkdir(output,{recursive:true});
 for(const file of files)await cp(path.join(source,file),path.join(output,file));
 for(const directory of directories)await cp(path.join(source,directory),path.join(output,directory),{
   recursive:true,filter:filename=>!path.basename(filename).startsWith('.'),
 });
-const motion=JSON.parse(await readFile(path.join(source,'assets/motion/manifest.json'),'utf8'));
-const activeMotion=new Set(['assets/motion/manifest.json','assets/motion/project-surfaces.json']);
-for(const family of motion.families)for(const variant of family.variants) {
-  if(variant.src)activeMotion.add(variant.src);
-  for(const part of variant.parts||[])activeMotion.add(part.src);
-}
+// Only journey files named by the manifest ship; the old film archive never does.
+const journey=JSON.parse(await readFile(path.join(source,'assets/journey/manifest.json'),'utf8'));
+const activeJourney=new Set(['assets/journey/manifest.json','assets/journey/poster.webp']);
+for(const tier of Object.values(journey.tiers))for(const file of Object.values(tier))activeJourney.add(file.src.replace(/^\.\//,''));
 await cp(path.join(source,'assets'),path.join(output,'assets'),{
   recursive:true,
   filter:filename=>{
     if(path.basename(filename).startsWith('.'))return false;
     const relative=path.relative(source,filename).split(path.sep).join('/');
-    return !relative.startsWith('assets/motion/')||activeMotion.has(relative);
+    if(relative.startsWith('assets/motion')||relative.startsWith('assets/portraits'))return false;
+    return !relative.startsWith('assets/journey/')||activeJourney.has(relative)||!/\.[a-z0-9]+$/.test(relative);
   },
 });
 
@@ -44,7 +44,7 @@ async function inspect(dir){
     if(entry.isDirectory()){await inspect(file);continue;}
     const info=await stat(file);
     if(info.size>25*1024*1024)throw new Error(`Cloudflare Pages 25 MiB limit exceeded: ${path.relative(output,file)}`);
-    if(!/\.(html|css|js|json|svg|webp|jpg|png|mp4|bin|pdf|txt|xml|woff2)$/.test(file)&&!['_headers','_redirects'].includes(entry.name))
+    if(!/\.(html|css|js|json|svg|webp|jpg|png|pdf|txt|xml|woff2)$/.test(file)&&!['_headers','_redirects'].includes(entry.name))
       throw new Error(`Unapproved public file: ${path.relative(output,file)}`);
     if(/\.(?:html|js|json)$/.test(file)){
       const text=await readFile(file,'utf8');

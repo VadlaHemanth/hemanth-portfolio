@@ -4,13 +4,13 @@
  * (smoothed by Lenis), so the journey plays forward and backward at one
  * consistent pace instead of scrubbing a video.
  */
-import Lenis from "../../vendor/lenis.mjs";
-import {createContext} from "./gl.js";
-import {JourneyRenderer} from "./renderer.js";
-import {createTimeline, zoomCamera, CHAMBER_DEPTH, smoothstep} from "./timeline.js";
-import {Overlays, layoutCards} from "./overlays.js";
-import {chooseTier, fetchAll} from "./assets.js";
-import {initAmbient} from "./ambient.js";
+import Lenis from "../../vendor/lenis.js?v=20261015-v3";
+import {createContext} from "./gl.js?v=20261015-v3";
+import {JourneyRenderer} from "./renderer.js?v=20261015-v3";
+import {createTimeline, zoomCamera, CHAMBER_DEPTH, smoothstep} from "./timeline.js?v=20261015-v3";
+import {Overlays, layoutCards} from "./overlays.js?v=20261015-v3";
+import {chooseTier, fetchAll} from "./assets.js?v=20261015-v3";
+import {initAmbient} from "./ambient.js?v=20261015-v3";
 
 const CORE_SIZE = 0.9;
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));

@@ -1,4 +1,4 @@
-import { initJourney } from "./js/journey/journey.js";
+import { initJourney } from "./js/journey/journey.js?v=20261015-v3";
 
 export const MOTION_STORAGE_KEY = "vh:motion";
 const MOTION_PREFERENCES = new Set(["system", "full", "reduced"]);

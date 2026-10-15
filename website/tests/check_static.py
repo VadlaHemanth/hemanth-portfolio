@@ -33,7 +33,7 @@ class StaticChecks(unittest.TestCase):
         cls.markup = Markup(cls.html)
         cls.nodes = cls.markup.nodes
         cls.ids = {attrs["id"]: (tag, attrs) for tag, attrs in cls.nodes if "id" in attrs}
-        cls.css = (ROOT / "styles.css").read_text() + "\n" + (ROOT / "scroll-story.css").read_text()
+        cls.css = (ROOT / "styles.css").read_text() + "\n" + (ROOT / "css/journey.css").read_text()
         cls.sections_css = (ROOT / "css/sections.css").read_text()
         cls.css += "\n" + (ROOT / "css/tokens.css").read_text() + "\n" + cls.sections_css
         cls.region = re.search(r"<!-- SECTIONS:START.*?<!-- SECTIONS:END -->", cls.html, re.S).group(0)
@@ -77,37 +77,29 @@ class StaticChecks(unittest.TestCase):
                 self.assertTrue(attrs.get("alt", "").strip())
                 self.assertGreater(int(attrs["width"]), 0)
                 self.assertGreater(int(attrs["height"]), 0)
-                if "portraits" not in attrs["src"]:
+                if "journey/poster" not in attrs["src"]:
                     self.assertEqual(attrs.get("loading"), "lazy")
-        image = next(attrs for tag, attrs in self.nodes if tag == "img" and "hero-wide" in attrs["src"])
-        source = next(attrs for tag, attrs in self.nodes if tag == "source" and "hero-phone" in attrs["srcset"])
-        self.assertEqual((image["width"], image["height"]), ("1600", "900"))
-        self.assertEqual((source["width"], source["height"]), ("900", "1600"))
+        poster = next(attrs for tag, attrs in self.nodes if tag == "img" and "journey/poster" in attrs["src"])
+        self.assertEqual((poster["width"], poster["height"]), ("1122", "1402"))
 
-    def test_motion_is_scroll_background_with_skippable_real_loader(self):
-        self.assertEqual(self.ids["top"][1]["class"], "scroll-story")
-        self.assertEqual(self.ids["experience-loader"][1]["role"], "dialog")
-        self.assertIn("hidden", self.ids["experience-loader"][1])
-        self.assertIn("skip-loading", self.ids)
-        self.assertIn("load-progress", self.ids)
-        self.assertNotIn("cinematic-intro", self.ids)
-        _, video = self.ids["intro-video"]
-        self.assertEqual(video.get("preload"), "none")
-        for required in ["muted", "playsinline"]:
-            self.assertIn(required, video)
-        for forbidden in ["autoplay", "loop", "src"]:
-            self.assertNotIn(forbidden, video)
-        self.assertNotIn("hidden", self.ids["site-content"][1])
-        self.assertEqual(self.ids["intro-progress"][0], "progress")
-        self.assertEqual(self.ids["intro-progress"][1].get("class"), "sr-only")
-        self.assertNotIn("scroll-hint", self.ids)
-        self.assertNotIn('class="story-bottom', self.html)
-        self.assertIn("Scroll down to move forward", self.html)
-        self.assertIn("Scroll up to go back", self.html)
-        self.assertEqual(
-            [attrs["data-chapter"] for _, attrs in self.nodes if "data-chapter" in attrs],
-            ["mind", "build", "work", "return"],
-        )
+    def test_journey_is_a_scroll_driven_canvas_with_accessible_text(self):
+        self.assertEqual(self.ids["top"][1]["class"], "journey")
+        self.assertEqual(self.ids["top"][1]["aria-labelledby"], "journey-title")
+        self.assertEqual(self.ids["journey-title"][0], "h1")
+        canvas = next(attrs for tag, attrs in self.nodes if tag == "canvas")
+        self.assertEqual(canvas.get("aria-hidden"), "true")
+        self.assertIn("data-journey-canvas", canvas)
+        # No film, no loader dialog, no autoplaying media.
+        self.assertFalse(any(tag in ("video", "audio") for tag, _ in self.nodes))
+        self.assertNotIn("experience-loader", self.ids)
+        self.assertNotIn("intro-video", self.ids)
+        # Skip and tour controls exist and the cards lead with Attendance ERP.
+        self.assertIn('data-skip', self.html)
+        self.assertIn('data-guide', self.html)
+        cards = [attrs["data-card"] for _, attrs in self.nodes if "data-card" in attrs]
+        self.assertEqual(cards, ["satellite", "attendance", "memory"])
+        for card in cards:
+            self.assertIn(f'href="#case-{card}"', self.html)
 
     def test_fullscreen_is_progressively_enhanced_not_forced(self):
         self.assertIn("fullscreen-toggle", self.ids)
@@ -119,9 +111,7 @@ class StaticChecks(unittest.TestCase):
         self.assertNotIn("sound-toggle", self.ids)
         self.assertNotIn("sound-status", self.ids)
         self.assertFalse((ROOT / "sound.js").exists())
-        self.assertFalse(any(tag == "audio" for tag, _ in self.nodes))
-        self.assertIn("muted", self.ids["intro-video"][1])
-        self.assertIn("No sound needed.", self.html)
+        self.assertFalse(any(tag in ("audio", "video") for tag, _ in self.nodes))
 
     def test_public_links_are_allowlisted(self):
         allowlist = {

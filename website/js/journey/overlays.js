@@ -3,7 +3,7 @@
  * three project cards and the closing line. Everything is driven by the same
  * state as the camera, so text and picture can never drift apart.
  */
-import {THOUGHTS, smoothstep, easeInOut} from "./timeline.js";
+import {THOUGHTS, smoothstep, easeInOut} from "./timeline.js?v=20261015-v3";
 
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 

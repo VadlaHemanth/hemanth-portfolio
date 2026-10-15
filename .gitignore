@@ -20,18 +20,8 @@
 /website/.env.*
 /website/*.log
 
-# Only the selected delivery set belongs in the public source repository.
-# Historical encodes and rejected pilots remain locally available.
-/website/assets/motion/*.bin
-/website/assets/motion/*.mp4
-!/website/assets/motion/wide-v5-balanced-1280x720-277bd0681722.mp4
-!/website/assets/motion/wide-v6-high-1920x1080-81518e97d88e.mp4
-!/website/assets/motion/phone-v5-balanced-720x1280-c66c0a9781a8.mp4
-!/website/assets/motion/phone-v5-high-1080x1920-fce09ae4cb64.mp4
-!/website/assets/motion/tablet-v5-balanced-960x720-18f38dab76f9.mp4
-!/website/assets/motion/tablet-v5-high-1440x1080-bb18e7bf4df2.mp4
-!/website/assets/motion/tablet-portrait-v5-balanced-720x960-abb8dcf0c4c7.mp4
-!/website/assets/motion/tablet-portrait-v5-high-1080x1440-fdbe8f4f4856.mp4
+# The v2 film archive stays local; the v3 journey ships small WebP plates instead.
+/website/assets/motion/
 
 /design/*
 !/design/build_resume.py

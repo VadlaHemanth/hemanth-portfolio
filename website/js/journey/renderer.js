@@ -1,6 +1,6 @@
 /** Draws one journey frame: scene (plates, tunnel, shards) → bloom → composite. */
-import {createProgram, createTexture, createTarget, deleteTarget, bindTarget, bindTexture} from "./gl.js";
-import * as S from "./shaders.js";
+import {createProgram, createTexture, createTarget, deleteTarget, bindTarget, bindTexture} from "./gl.js?v=20261015-v3";
+import * as S from "./shaders.js?v=20261015-v3";
 
 const BLOOM_LEVELS = 5;
 

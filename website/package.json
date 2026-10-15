@@ -1,14 +1,14 @@
 {
   "name": "vadla-hemanth-portfolio",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
-  "description": "A dependency-free editorial portfolio for Vadla Hemanth.",
+  "description": "Vadla Hemanth's portfolio: a scroll-driven WebGL journey and an editorial portfolio. No build step.",
   "scripts": {
     "start": "python3 -m http.server 8080 --bind 127.0.0.1",
     "build": "node ../scripts/build-site.mjs",
     "test": "node --test tests/*.test.mjs && python3 tests/check_static.py",
-    "check": "node --check app.js && node --check content.js && node --check content-enrichment.js && node --check motion.js && node --check motion-curve.js && node --check project-screens.js && node --check build-content.mjs && node --check js/sections.js"
+    "check": "for f in app.js content.js content-enrichment.js build-content.mjs js/sections.js js/journey/*.js vendor/lenis.js; do node --check \"$f\" || exit 1; done"
   },
   "engines": {
     "node": ">=20"

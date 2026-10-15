@@ -3,7 +3,7 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   X-Frame-Options: SAMEORIGIN
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; font-src 'self'; object-src 'self'; frame-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; connect-src 'self'; font-src 'self'; object-src 'self'; frame-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'self'
 
 # Keep cache rules disjoint: Pages joins duplicate matching header values.
 # Explicit no-cache prevents a zone Browser Cache TTL from lengthening max-age=0.
@@ -31,19 +31,27 @@
 /sitemap.xml
   Cache-Control: public, no-cache, max-age=0, must-revalidate
 
-/assets/motion/*.mp4
+# Journey plates and textures have content hashes in their names.
+/assets/journey/high/*
   Cache-Control: public, max-age=31536000, immutable
-  Content-Type: video/mp4
 
-/assets/motion/*.bin
+/assets/journey/mid/*
   Cache-Control: public, max-age=31536000, immutable
-  Content-Type: application/octet-stream
 
-/assets/motion/*.json
+/assets/journey/low/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/journey/manifest.json
   Cache-Control: public, no-cache, max-age=0, must-revalidate
 
-/assets/portraits/*
+/assets/journey/poster.webp
   Cache-Control: public, max-age=86400
+
+/assets/work/*
+  Cache-Control: public, max-age=86400
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
 
 /assets/social-preview.jpg
   Cache-Control: public, no-cache, max-age=0, must-revalidate

@@ -2,7 +2,7 @@
  * A very faint, living neural-to-circuit field behind the portfolio sections.
  * Half resolution, about 30 fps, and only while the sections are on screen.
  */
-import {createProgram, createTexture} from "./gl.js";
+import {createProgram, createTexture} from "./gl.js?v=20261015-v3";
 
 const VS = `#version 300 es
 out vec2 vUv;
