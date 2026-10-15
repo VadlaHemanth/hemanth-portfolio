@@ -76,10 +76,12 @@ uniform vec4 uEdges;
 vec3 sampleStack(vec2 P) {
   vec2 uv0 = P / uPlateSize;
   vec3 col = texture(uL0, uv0).rgb;
-  // Fade the plate's own borders into the black stage.
+  // Feather the plate into the black stage: toward its borders the near-black backdrop
+  // is eased down to pure black (a natural vignette), so no rectangle edge ever shows.
   float edge = smoothstep(0.0, uEdges.x, uv0.x) * smoothstep(0.0, uEdges.y, 1.0 - uv0.x)
     * smoothstep(0.0, uEdges.z, uv0.y) * smoothstep(0.0, uEdges.w, 1.0 - uv0.y);
-  col *= edge;
+  float toe = smoothstep(0.012, 0.06, luma(col));
+  col *= mix(toe, 1.0, edge * edge) * edge;
   float density = uSigma * uPxPerCss;
   if (uHasL1 > 0.5) {
     vec2 uv1 = (uM1 * vec3(P, 1.0)).xy;
