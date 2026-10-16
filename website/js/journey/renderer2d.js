@@ -253,7 +253,8 @@ export class CpuRenderer {
       if (key === "circuit") this.images.circuit = copyImage(bitmap, 1024);
       return;
     }
-    const maxSide = key === "L0" ? 2800 : key === "core" ? 768 : 2048;
+    // Plates keep their full size: the zoom's hand-offs assume each plate's real texel density.
+    const maxSide = key === "core" ? 768 : 2800;
     this.images[key] = copyImage(bitmap, maxSide);
     delete this.plates[key];
   }
@@ -453,6 +454,19 @@ export class CpuRenderer {
     const start = top ? layers.indexOf(top) : -1;
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "low";
+    // Pixels inside a wide-open window are covered by the passage: do not draw the eye there.
+    const win = f.tunnel?.window;
+    const hole = win && win[2] >= p.pupilRadius * p.sigma * 0.9 && win[2] > Math.min(vw, vh) * 0.15;
+    if (hole) {
+      const {e: we, phi: wphi} = oval(f.tunnel.windowShape);
+      const r = win[2] * 0.88 * k;
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.beginPath();
+      ctx.rect(0, 0, this.width, this.height);
+      ctx.ellipse(win[0] * k, win[1] * k, r * (1 + we), r * (1 - we), wphi, 0, TAU);
+      ctx.clip("evenodd");
+    }
     if (start < 0) {
       const s = (k * p.sigma) / (L0.width / p.plateSize[0]);
       this.drawPortrait(L0, [s, 0, 0, s, k * (p.pupilScreen[0] - p.sigma * p.pupil[0]), k * (p.pupilScreen[1] - p.sigma * p.pupil[1])]);
@@ -463,6 +477,7 @@ export class CpuRenderer {
       this.drawMipped(mipped, this.plateTransform(layer.m, mipped.width, p, k));
     }
     ctx.globalAlpha = 1;
+    if (hole) ctx.restore();
     ctx.setTransform(k, 0, 0, k, 0, 0);
     // The pupil opens into the portal; a ring of light marks where the iris meets it.
     // Both follow the pupil's measured, slightly oval outline, drawn in its own frame.
@@ -475,25 +490,30 @@ export class CpuRenderer {
       ctx.translate(qx, qy);
       ctx.rotate(phi);
       ctx.scale(1 + e, 1 - e);
+      // Once the passage fills the opening, only a thin ring of the pupil can still show:
+      // fill rings, not discs (software drawing costs every pixel it covers).
+      const open = f.tunnel && f.tunnel.window[2] >= rp * 0.9;
+      const ring = (r0, r1) => {
+        ctx.beginPath();
+        ctx.arc(0, 0, r1, 0, TAU);
+        if (r0 > 0) ctx.arc(0, 0, r0, 0, TAU, true);
+        ctx.fill();
+      };
       if (p.dilation > 0.05) {
         const g = ctx.createRadialGradient(0, 0, rp * 0.985, 0, 0, rp * 1.04);
         g.addColorStop(0, `rgba(0,0,0,${smooth(0.05, 0.35, p.dilation)})`);
         g.addColorStop(1, "rgba(0,0,0,0)");
         ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(0, 0, rp * 1.04, 0, TAU);
-        ctx.fill();
+        ring(open ? rp * 0.88 : 0, rp * 1.04);
       }
       if (p.irisFx > 0.01) {
         ctx.globalCompositeOperation = "lighter";
-        const ring = ctx.createRadialGradient(0, 0, rp * 0.92, 0, 0, rp * 1.35);
-        ring.addColorStop(0, "rgba(43,123,255,0)");
-        ring.addColorStop(0.22, `rgba(43,123,255,${0.75 * p.irisFx})`);
-        ring.addColorStop(1, "rgba(43,123,255,0)");
-        ctx.fillStyle = ring;
-        ctx.beginPath();
-        ctx.arc(0, 0, rp * 1.35, 0, TAU);
-        ctx.fill();
+        const light = ctx.createRadialGradient(0, 0, rp * 0.92, 0, 0, rp * 1.35);
+        light.addColorStop(0, "rgba(43,123,255,0)");
+        light.addColorStop(0.22, `rgba(43,123,255,${0.75 * p.irisFx})`);
+        light.addColorStop(1, "rgba(43,123,255,0)");
+        ctx.fillStyle = light;
+        ring(rp * 0.92, rp * 1.35);
         ctx.globalCompositeOperation = "source-over";
       }
       ctx.restore();

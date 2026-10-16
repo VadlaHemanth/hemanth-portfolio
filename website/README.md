@@ -75,10 +75,12 @@ portrait and the full portfolio instead.
 
 `assets/journey/manifest.json` lists three tiers (high, mid, low) of WebP plates and
 textures with content-hashed names. The tier depends on screen size, device memory,
-pointer type and connection. Everything for the journey is 1.2–2.0 MiB, loaded in
-priority order: the portrait first, so the hero appears at once, then the eye
-stack, then the tunnel textures. Production sources and the build script for these
-files live outside the website (`production-v3/`, not published).
+pointer type and connection. Everything for the journey is 1.2–3.5 MiB, loaded in
+priority order: the portrait first (about 0.3 MiB), so the hero appears at once, then
+the eye stack, then the tunnel textures. The eye and iris plates of the high tier are
+2× super-resolved (2508 px), so the dive stays sharp deep into the iris. Production
+sources and the build script for these files live outside the website
+(`production-v3/`, not published).
 
 ## Content and privacy
 
