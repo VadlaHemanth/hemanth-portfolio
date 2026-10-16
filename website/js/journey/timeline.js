@@ -200,6 +200,13 @@ export function createTimeline(width, height, plate, {top = 0} = {}) {
     return (lo + (span > 0 ? (s - scrollAt[lo]) / span : 0)) * dv;
   }
 
+  /** Inverse of visualAt: the scroll position (viewport heights) of a visual position. */
+  function scrollAtVisual(visual) {
+    const x = clamp(visual / dv, 0, N - 1);
+    const i = Math.min(N - 2, Math.floor(x));
+    return scrollAt[i] + (scrollAt[i + 1] - scrollAt[i]) * (x - i);
+  }
+
   const ctx = {width, height, plate, top, zoomLen, showProgress: 0};
 
   const showStart = chapters.find((c) => c.phase === "show").start;
@@ -216,7 +223,7 @@ export function createTimeline(width, height, plate, {top = 0} = {}) {
     return chapterState(chapter, t, ctx, v / visualTotal);
   }
 
-  return {scrollTotal, visualTotal, zoomLen, chapters, stateAt, visualAt};
+  return {scrollTotal, visualTotal, zoomLen, chapters, stateAt, visualAt, scrollAtVisual};
 }
 
 function baseState() {

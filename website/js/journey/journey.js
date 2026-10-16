@@ -346,8 +346,10 @@ export function initJourney() {
     if (!loop.journey || !ready || !visible || document.hidden) return;
     const target = scrollVh(lenis.scroll);
     if (smoothScroll === null) smoothScroll = target;
-    // A light extra damping removes the last bit of input jitter (touch and keyboard steps).
-    smoothScroll += (target - smoothScroll) * (1 - Math.exp(-dt / (coarse ? 65 : 45)));
+    // A light extra damping removes the last bit of input jitter (touch and keyboard steps);
+    // the guided play-through is already smooth and keeps its exact, uniform pace.
+    if (tour) smoothScroll = target;
+    else smoothScroll += (target - smoothScroll) * (1 - Math.exp(-dt / (coarse ? 65 : 45)));
     if (Math.abs(target - smoothScroll) < 1e-5) smoothScroll = target;
     const visual = timeline.visualAt(smoothScroll);
     const instant = (visual - lastVisual) / Math.max(dt / 1000, 1e-3);
@@ -389,14 +391,28 @@ export function initJourney() {
     html.classList.toggle("is-journey", on);
   }
 
-  // Guided play-through: "Explore my work" plays the whole journey at one steady pace, as the
-  // previous site's film did, and ends on the closing portrait. Any input hands control back.
+  // First-visit hint: a quiet "scroll down" prompt on the opening frame, gone for good once the
+  // visitor moves (scroll, a skip link or the guide).
+  const scrolled = () => {
+    if (window.scrollY < 2 && !tour) return;
+    root.classList.add("has-scrolled");
+    window.removeEventListener("scroll", scrolled);
+  };
+  window.addEventListener("scroll", scrolled, {passive: true});
+  scrolled();
+
+  // Guided play-through: "Explore my work" plays the whole journey, as the previous site's film
+  // did, at one uniform camera speed: it advances in the timeline's visual units, so the dive, the
+  // passage, the projects and the pull-back all move alike. It ends on the closing portrait, and
+  // any input hands control back.
+  const GUIDE_SPEED = 2.75; // visual units per second (the whole journey in about 13.5 s)
   function startTour() {
-    const from = lenis.scroll;
-    const to = sectionTop + timeline.scrollTotal * view.svh;
-    if (to - from < 4) return false;
-    tour = {from, to, elapsed: 0, last: performance.now(), duration: ((to - from) / view.svh / 0.42) * 1000};
+    const from = timeline.visualAt(clamp(scrollVh(lenis.scroll), 0, timeline.scrollTotal));
+    const to = timeline.visualTotal;
+    if (to - from < 0.05) return false;
+    tour = {from, to, elapsed: 0, last: performance.now(), duration: ((to - from) / GUIDE_SPEED) * 1000};
     html.classList.add("is-touring");
+    root.classList.add("has-scrolled");
     return true;
   }
   function stopTour() {
@@ -405,14 +421,16 @@ export function initJourney() {
     html.classList.remove("is-touring");
   }
   function advanceTour(now) {
-    // Advance by frame time, capped, so a stalled frame never makes the guide jump ahead.
-    tour.elapsed += clamp(now - tour.last, 0, 50);
+    // Real time keeps the speed uniform however fast the machine draws; only a long stall
+    // (a hidden tab, a busy moment) is skipped rather than caught up in one jump.
+    tour.elapsed += clamp(now - tour.last, 0, 250);
     tour.last = now;
     const t = clamp(tour.elapsed / tour.duration);
-    // Ramps of ~0.6 s at either end; constant speed in between.
-    const ramp = Math.min(0.08, 600 / tour.duration);
+    // Ease in and out over about a third of a second; constant speed in between.
+    const ramp = Math.min(0.06, 350 / tour.duration);
     const e = t < ramp ? (t * t) / (2 * ramp * (1 - ramp)) : t > 1 - ramp ? 1 - ((1 - t) ** 2) / (2 * ramp * (1 - ramp)) : (t - ramp / 2) / (1 - ramp);
-    lenis.scrollTo(lerp(tour.from, tour.to, e), {immediate: true, force: true});
+    const visual = lerp(tour.from, tour.to, e);
+    lenis.scrollTo(sectionTop + timeline.scrollAtVisual(visual) * view.svh, {immediate: true, force: true});
     if (t >= 1) stopTour();
   }
   for (const type of ["wheel", "touchstart", "pointerdown", "keydown"]) {

@@ -90,6 +90,12 @@ function check(name,passed,details) {
 }
 function checkCache(route,value,immutable=false) {
   const maxAge=[...String(value||'').matchAll(/(?:^|,)\s*max-age=(\d+)/gi)].map(match=>Number(match[1]));
+  if(immutable==='day') {
+    // The poster's URL carries its content version; the file itself keeps a one-day lifetime.
+    check(`cache ${route}`,maxAge.length===1 && maxAge[0]===86400 && !/\b(?:immutable|no-store)\b/i.test(value||''),
+      value || 'Cache-Control missing');
+    return;
+  }
   const html=route==='/' || route.endsWith('.html') || ['/resume','/404'].includes(route);
   check(`cache ${route}`,maxAge.length===1 && maxAge[0]===(immutable?31536000:0)
     && (immutable?/\bimmutable\b/i:/\bmust-revalidate\b/i).test(value||'')
@@ -113,13 +119,20 @@ try {
     if(/^(?:css|js|vendor)\/.+\.(?:css|js)$/.test(relative))revalidating.push([relative,'/'+relative]);
   }
   const manifest=JSON.parse(git('show',`${revision}:website/assets/journey/manifest.json`).toString());
-  const immutable=[];
+  const immutable=[],versioned=new Map();
   for(const tier of Object.values(manifest.tiers))for(const file of Object.values(tier)) {
     const relative=file.src.replace(/^\.\//,'');
-    immutable.push([relative,'/'+relative]);
+    // A versioned URL (the poster, shared by the page and the journey) names the file before '?v='.
+    if(relative.includes('?'))versioned.set(relative,[relative.replace(/\?.*$/,''),'/'+relative,'day']);
+    else immutable.push([relative,'/'+relative]);
+  }
+  for(const [relative,[file]] of versioned) {
+    const version=new URL(relative,'https://portfolio.example/').searchParams.get('v');
+    const expected=git('show',`${revision}:website/${file}`);
+    check(`version ${relative}`,version===sha(expected).slice(0,10),`content sha256 starts ${sha(expected).slice(0,10)}`);
   }
   let changedFilesVerified=0;
-  for(const [file,route,isImmutable] of [...revalidating.map(r=>[...r,false]),...immutable.map(r=>[...r,true])]) {
+  for(const [file,route,isImmutable] of [...revalidating.map(r=>[...r,false]),...immutable.map(r=>[...r,true]),...versioned.values()]) {
     const repoPath='website/'+file;
     if(!tracked.has(repoPath)) {
       check(`tracked ${repoPath}`,false,'Expected public file is absent from the requested revision.');

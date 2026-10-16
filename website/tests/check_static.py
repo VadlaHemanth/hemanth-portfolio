@@ -78,7 +78,12 @@ class StaticChecks(unittest.TestCase):
         self.assertEqual(canvas.get("aria-hidden"), "true")
         self.assertIn("data-journey-canvas", canvas)
         hooks = [attrs.get("data-j") for _, attrs in self.nodes if "data-j" in attrs]
-        self.assertEqual(hooks, ["hero", "thought", "cards", "cards-title", "final", "progress", "load", "status"])
+        self.assertEqual(hooks, ["hero", "hint", "thought", "cards", "cards-title", "final", "progress", "load", "status"])
+        # First-visit scroll hint: decorative (the content is reachable without it), both input wordings.
+        hint = next(attrs for _, attrs in self.nodes if attrs.get("data-j") == "hint")
+        self.assertEqual(hint.get("aria-hidden"), "true")
+        self.assertIn("Scroll down to begin", self.html)
+        self.assertIn("Swipe up to begin", self.html)
         self.assertIn("data-journey-stage", self.html)
         # No film or loader dialog. As on the previous site, "Explore my work" plays the journey
         # (a guided scroll, still a plain link to the work without JavaScript) and the other

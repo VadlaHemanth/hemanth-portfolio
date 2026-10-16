@@ -348,3 +348,31 @@ html.is-journey:has(.journey[data-renderer="cpu"]) .site-header { backdrop-filte
   .journey-hero { position: relative; height: auto; opacity: 1 !important; transform: none !important; visibility: visible; }
   .story-opening { padding-block: 2rem; }
 }
+
+/* First-visit hint: a quiet prompt to scroll, on the opening frame only, until the visitor moves. */
+.journey-hint {
+  position: absolute; left: 50%; bottom: max(1.1rem, calc(env(safe-area-inset-bottom) + .6rem)); z-index: 4;
+  display: flex; align-items: center; gap: .8rem; margin: 0; transform: translateX(-50%);
+  font: .6875rem/1.6 var(--mono); letter-spacing: .12em; text-transform: uppercase; white-space: nowrap;
+  color: #c7cfd9; text-shadow: 0 1px 10px rgba(0, 0, 0, .8); pointer-events: none;
+  opacity: 0; transition: opacity .5s var(--ease);
+}
+.journey.is-ready .journey-hint { opacity: 1; transition: opacity .9s var(--ease) 1.6s; }
+.journey.has-scrolled .journey-hint, html.is-touring .journey-hint, html.journey-static .journey-hint { opacity: 0; transition: opacity .3s var(--ease); }
+.journey-hint-track { position: relative; flex: none; width: 1px; height: 2.1rem; overflow: hidden; background: rgba(244, 247, 250, .32); }
+.journey-hint-track::after {
+  content: ""; position: absolute; left: 0; top: -45%; width: 1px; height: 45%; background: #4aa3ff; box-shadow: 0 0 6px #168bff;
+  animation: journey-hint-drop 1.9s cubic-bezier(.45, 0, .2, 1) infinite;
+}
+@keyframes journey-hint-drop { to { top: 100%; } }
+.journey-hint .hint-touch { display: none; }
+@media (pointer: coarse) {
+  .journey-hint .hint-touch { display: inline; }
+  .journey-hint .hint-wheel { display: none; }
+}
+/* Portrait and short screens: the opening copy sits at the bottom, so the hint gets compact and low. */
+@media (max-aspect-ratio: 1.12 / 1), (max-height: 600px) {
+  .journey-hint { bottom: max(.65rem, calc(env(safe-area-inset-bottom) + .35rem)); gap: .6rem; font-size: .5625rem; }
+  .journey-hint-track { height: 1.05rem; }
+}
+@media (prefers-reduced-motion: reduce) { .journey-hint-track::after { animation: none; top: 30%; } }

@@ -153,3 +153,16 @@ test("the hero keeps the approved composition and the header never cuts the hair
     }
   }
 });
+
+test("the guided play-through can move at one uniform camera speed (visual position ↔ scroll is exact)", () => {
+  for (const [w, h] of VIEWPORTS) {
+    const tl = createTimeline(w, h, plate, {top: 88});
+    let worst = 0;
+    for (let i = 0; i <= 400; i++) {
+      const visual = (tl.visualTotal * i) / 400;
+      worst = Math.max(worst, Math.abs(tl.visualAt(tl.scrollAtVisual(visual)) - visual));
+    }
+    assert.ok(worst < 1e-6, `${w}x${h}: round trip within ${worst}`);
+    assert.ok(Math.abs(tl.scrollAtVisual(tl.visualTotal) - tl.scrollTotal) < 1e-9, "the guide ends exactly at the journey's end");
+  }
+});
