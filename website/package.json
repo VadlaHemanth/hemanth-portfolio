@@ -8,7 +8,7 @@
     "start": "python3 -m http.server 8080 --bind 127.0.0.1",
     "build": "node ../scripts/build-site.mjs",
     "test": "node --test tests/*.test.mjs && python3 tests/check_static.py",
-    "check": "for f in app.js content.js content-enrichment.js build-content.mjs js/sections.js js/journey/*.js vendor/lenis.js; do node --check \"$f\" || exit 1; done"
+    "check": "for f in app.js content.js content-enrichment.js build-content.mjs skills.js js/journey/*.js vendor/lenis.js; do node --check \"$f\" || exit 1; done"
   },
   "engines": {
     "node": ">=20"

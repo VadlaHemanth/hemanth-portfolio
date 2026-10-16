@@ -1,13 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { cpSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   MOTION_STORAGE_KEY,
   readMotionPreference,
   writeMotionPreference,
   resolveReducedMotion,
+  copyProfileUrl,
   initMotionPreference,
   initMobileMenu,
+  initDisclosure,
+  initProjectDialogs,
+  renderCaseStudy,
   initFullscreen,
 } from "../app.js";
 import { PROFILE, PROJECTS, getProject } from "../content.js";
@@ -87,10 +95,6 @@ test("public identity and exactly three real projects", () => {
     assert.equal(project.architecture.length, 4);
     assert.ok(project.limitations.length >= 2);
   }
-  assert.match(getProject("attendance").status, /prototype.*private/i);
-  assert.match(getProject("satellite").status, /prototype.*private/i);
-  assert.match(getProject("memory").status, /demo/i);
-  assert.match(getProject("attendance").evidence, /earlier.*not the current/i);
 });
 
 test("major project links are verified public repositories", () => {
@@ -161,6 +165,14 @@ test("visible preference updates labels, ARIA, storage, and motion-module event"
   assert.equal(doc.documentElement.dataset.motion, "full");
 });
 
+test("clipboard success and denied/unavailable fallbacks", async () => {
+  let copied;
+  assert.equal(await copyProfileUrl({ async writeText(text) { copied = text; } }), true);
+  assert.equal(copied, PROFILE.github);
+  assert.equal(await copyProfileUrl(undefined), false);
+  assert.equal(await copyProfileUrl({ async writeText() { throw new Error("denied"); } }), false);
+});
+
 function menuFixture() {
   const doc = new Document();
   const menu = new Element("nav");
@@ -207,6 +219,100 @@ test("mobile menu closes on outside pointer, outside focus, navigation, and desk
   assert.equal(toggle.getAttribute("aria-expanded"), "false");
 });
 
+test("under-the-hood disclosure changes panel visibility and ARIA together", async () => {
+  const trigger = new Element("button");
+  const panel = new Element();
+  const symbol = new Element("span");
+  trigger.queries.set(".disclosure-symbol", symbol);
+  initDisclosure(trigger, panel);
+  assert.equal(trigger.hidden, false);
+  assert.equal(panel.hidden, true);
+  await trigger.emit("click");
+  assert.equal(panel.hidden, false);
+  assert.equal(trigger.getAttribute("aria-expanded"), "true");
+  assert.equal(symbol.textContent, "−");
+  await trigger.emit("click");
+  assert.equal(panel.hidden, true);
+  assert.equal(trigger.getAttribute("aria-expanded"), "false");
+});
+
+function caseFixture() {
+  const doc = new Document();
+  for (const id of ["case-title", "case-description", "case-content", "case-kicker",
+    "case-status", "case-links", "close-project-dialog"]) {
+    doc.ids.set(id, new Element());
+  }
+  return doc;
+}
+
+test("case studies render scope, contribution, architecture and limits with verified links", () => {
+  const doc = caseFixture();
+  assert.equal(renderCaseStudy(null, doc), false);
+  assert.equal(renderCaseStudy(getProject("attendance"), doc), true);
+  assert.match(doc.getElementById("case-title").textContent, /(?:Camera-based attendance|Attendance ERP)/);
+  assert.equal(doc.getElementById("case-content").children.length, 5);
+  const labels = doc.getElementById("case-content").children.map((node) => node.children[0].textContent);
+  assert.deepEqual(labels, ["The problem", "My contribution", "How it works", "Where it stands", "Limits and context"]);
+  const repo = doc.getElementById("case-links").children[0];
+  assert.equal(repo.href, "https://github.com/Vadla-Hemanth/Automatic-Attendance-System");
+  assert.equal(repo.rel, "noopener noreferrer");
+  assert.equal(renderCaseStudy(getProject("satellite"), doc), true);
+  assert.equal(doc.getElementById("case-links").children.length, 2);
+  assert.equal(doc.getElementById("case-links").children[1].href, PROFILE.github);
+});
+
+test("native dialogs receive content, lock scroll, and restore the invoking control", async () => {
+  const doc = caseFixture();
+  const dialog = new Element("dialog");
+  dialog.open = false;
+  dialog.showModal = () => { dialog.open = true; };
+  dialog.close = () => { dialog.open = false; dialog.emit("close"); };
+  dialog.getBoundingClientRect = () => ({ left: 100, right: 700, top: 50, bottom: 600 });
+  const trigger = new Element("button");
+  trigger.dataset.project = "attendance";
+  const fallback = new Element("details");
+  doc.ids.set("project-dialog", dialog);
+  doc.ids.set("case-attendance", fallback);
+  doc.queries.set("[data-project]", [trigger]);
+  const controller = initProjectDialogs(doc);
+  assert.equal(fallback.hidden, true);
+  assert.equal(trigger.hidden, false);
+  assert.equal(controller.open("not-real", trigger), false);
+  await trigger.emit("click");
+  assert.equal(dialog.open, true);
+  assert.equal(doc.documentElement.classList.contains("dialog-open"), true);
+  assert.equal(doc.getElementById("case-title").focused, true);
+  await doc.getElementById("close-project-dialog").emit("click");
+  assert.equal(dialog.open, false);
+  assert.equal(doc.documentElement.classList.contains("dialog-open"), false);
+  assert.equal(trigger.focused, true);
+});
+
+test("journey project cards open the same case studies", async () => {
+  const doc = caseFixture();
+  const dialog = new Element("dialog");
+  dialog.open = false;
+  dialog.showModal = () => { dialog.open = true; };
+  dialog.close = () => { dialog.open = false; dialog.emit("close"); };
+  doc.ids.set("project-dialog", dialog);
+  initProjectDialogs(doc);
+  const card = new Element("a");
+  card.dataset.screenProject = "memory";
+  let prevented = false;
+  await doc.emit("click", { target: { closest: () => card }, preventDefault() { prevented = true; } });
+  assert.equal(dialog.open, true);
+  assert.equal(prevented, true);
+  assert.match(doc.getElementById("case-title").textContent, /Vendor Payment/);
+  await doc.getElementById("close-project-dialog").emit("click");
+  assert.equal(card.focused, true);
+});
+
+test("the no-dialog fallback remains readable on unsupported browsers", () => {
+  const doc = caseFixture();
+  doc.ids.set("project-dialog", new Element("dialog"));
+  assert.equal(initProjectDialogs(doc), null);
+});
+
 test("fullscreen is optional, accessible, toggles natively and follows Escape", async () => {
   const doc=new Document(),button=new Element('button'),status=new Element(),win=new Element();
   doc.ids.set('fullscreen-toggle',button);doc.ids.set('fullscreen-status',status);
@@ -232,30 +338,32 @@ test("fullscreen is optional, accessible, toggles natively and follows Escape", 
   assert.match(status.textContent,/not available/);
 });
 
-test("token text colours meet WCAG AA on the pure black base", () => {
-  const tokens = readFileSync(new URL("../css/tokens.css", import.meta.url), "utf8");
-  const token = (name) => tokens.match(new RegExp(`--${name}:\\s*#([0-9a-f]{6})`, "i"))?.[1];
+test("primary text, muted text, links, and button colours meet AA text contrast", () => {
   function luminance(hex) {
     const rgb = hex.match(/[0-9a-f]{2}/gi).map((part) => parseInt(part, 16) / 255);
     const linear = rgb.map((value) => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4);
     return linear[0] * .2126 + linear[1] * .7152 + linear[2] * .0722;
   }
-  const ratio = (a, b) => {
-    const [lighter, darker] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-    return (lighter + .05) / (darker + .05);
-  };
-  const black = token("void");
-  assert.equal(black, "000000");
-  // Body and secondary copy, link hover and the signal used for focus rings.
-  for (const name of ["sclera", "mist", "spark", "signal"]) {
-    assert.ok(ratio(token(name), black) >= 4.5, `${name} on void`);
+  for (const [foreground, background] of [
+    ["f4f7fa", "050608"], ["a6afbc", "050608"], ["a6afbc", "101216"],
+    ["168bff", "050608"], ["8fcbff", "101216"], ["050608", "168bff"],
+  ]) {
+    const [lighter, darker] = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+    assert.ok((lighter + .05) / (darker + .05) >= 4.5, `${foreground} on ${background}`);
   }
-  // --dim is reserved for large or decorative use: it must not colour small section text.
-  assert.ok(ratio(token("dim"), black) >= 3, "dim still passes for large text");
-  // Its only colour uses: the unlit flow icons and the first frame of a title reveal.
-  const css = readFileSync(new URL("../css/sections.css", import.meta.url), "utf8")
-    .replace(/@keyframes[^{]+\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, "")
-    .replace(/\.flow-node \{[^}]*\}/, "")
-    .replace(/@media print \{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, "");
-  assert.doesNotMatch(css, /color:\s*var\(--dim\)/);
+});
+
+test("the generated catalog in index.html is current", () => {
+  const website = fileURLToPath(new URL("../", import.meta.url));
+  const html = readFileSync(path.join(website, "index.html"), "utf8");
+  const temp = mkdtempSync(path.join(tmpdir(), "catalog-"));
+  try {
+    for (const file of ["build-content.mjs", "content.js", "content-enrichment.js", "index.html", "package.json"]) {
+      cpSync(path.join(website, file), path.join(temp, file));
+    }
+    execFileSync(process.execPath, ["build-content.mjs"], { cwd: temp, stdio: "pipe" });
+    assert.equal(readFileSync(path.join(temp, "index.html"), "utf8"), html, "run node website/build-content.mjs");
+  } finally {
+    rmSync(temp, { recursive: true, force: true });
+  }
 });

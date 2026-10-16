@@ -3,8 +3,17 @@
 A responsive portfolio that opens with a scroll-driven journey: from the portrait,
 into the eye, through a neural passage that turns into a circuit, to the projects,
 and back out to the face. It is plain HTML, CSS and ES modules with no build step.
-The only vendored library is Lenis for smooth scrolling. No analytics, external
-fonts, CDNs or backend.
+The only vendored library is Lenis for smooth scrolling. No analytics, web fonts,
+CDNs or backend.
+
+After the journey come the portfolio sections: selected work with case studies,
+smaller projects, experience, education, about, skills and contact. They keep the
+design of the previous version: the system font stack (Inter where installed,
+otherwise Helvetica Neue or Arial), monospace labels, and #f4f7fa text with
+#168bff and #8fcbff accents on #050608. `styles.css`, `catalog.css` and
+`skills.css` style them; `app.js` adds the menu, case-study dialogs, flow
+disclosures, profile-link copy and fullscreen control, and `skills.js` runs the
+skills lens. Every section reads without JavaScript.
 
 ## Run locally
 
@@ -35,15 +44,32 @@ journey runs forward and backward at the same pace instead of scrubbing a video.
   colour-matched, so the zoom never visibly swaps one eye for another. The iris
   texture comes from a real photo of Hemanth's eye.
 - The opening pupil becomes a window into the neural passage, so there is no black
-  gap between the eye and the tunnel.
+  gap between the eye and the tunnel. The window, the dilation and the dark rim all
+  follow the pupil's outline as measured on the iris plate (its centre, radius and a
+  slight oval), so the opening sits exactly on the pupil.
 - `js/journey/overlays.js` positions the DOM text and the three project cards from
   the same state, so text and picture never drift apart. The cards are real links.
 - `js/journey/journey.js` handles Lenis, loading, adaptive resolution (it lowers the
-  render scale, then drops bloom on very slow GPUs), the guided tour, context loss and
+  render scale, then drops bloom on very slow GPUs), the skip links, context loss and
   resizing. `?journey-capture` renders single deterministic frames for QA.
+- The opening copy sits left of the face on landscape screens and below it on
+  portrait screens. `css/journey.css` sets it, and the journey's other text, in the
+  same type and colours as the sections. Explore my work and Skip to work both jump
+  straight to the work; the project cards open the same case studies as Selected work.
 
-Reduced motion (system setting or the header switch), a missing WebGL2 context or a
-failed load all show the static portrait and the full portfolio instead.
+Without WebGL (no GPU, blocked drivers), `js/journey/renderer2d.js` draws the same
+journey with Canvas 2D. It is loaded only on those machines:
+
+- the portrait and eye plates are drawn at full resolution from mip chains, and the
+  resting portrait is an exact pre-scaled copy;
+- the passage is computed per pixel (`cpu-tunnel.js`) from a lookup table and
+  mip-mapped textures, on two worker threads (`cpu-tunnel-worker.js`), at a
+  resolution that adapts to the machine;
+- it draws only when something changes and sharpens to full resolution when the
+  visitor pauses.
+
+Reduced motion (system setting or the header switch) or a failed load show the static
+portrait and the full portfolio instead.
 
 ## Media
 
@@ -61,8 +87,8 @@ is summarised without project branding, addresses or repository links. The linke
 public attendance repository is an earlier snapshot, not the current private ERP.
 Prototypes and proposals are labelled. No invented employment, awards, client
 counts, accuracy or revenue claims. Project and experience data live in
-`content.js` and `content-enrichment.js`; the catalogue is rendered into
-`index.html` so it reads without JavaScript.
+`content.js` and `content-enrichment.js`; `node build-content.mjs` renders Selected
+work and the catalogue into `index.html` so they read without JavaScript.
 
 ## Checks
 
@@ -72,14 +98,15 @@ npm test
 ```
 
 Tests cover the journey timeline (pacing continuity, framing, card layout, media
-tiers), content and link structure, section anchors and copy accuracy, cache
-headers, and accessible defaults.
+tiers), content and link structure, the menu, case-study dialogs, disclosures and
+skills lens, the generated catalogue staying in sync with the content modules,
+cache headers, and accessible defaults.
 
 ## Deploy
 
 Build the public output with `node scripts/build-site.mjs` from the repository root
 and serve `dist`. `_headers` supplies the security policy and cache rules: HTML,
-scripts and styles revalidate; journey plates and fonts are immutable.
+scripts and styles revalidate; journey plates are immutable.
 
 Production is https://portfolio.hemanthvadla.tech/ on Cloudflare Pages. The GitHub
 integration publishes updates pushed to `main` (build command

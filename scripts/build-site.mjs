@@ -10,13 +10,12 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 const source=path.join(root,'website'),output=path.join(root,'dist');
 await import('../website/build-content.mjs');
 const files=[
-  'index.html','resume.html','404.html','styles.css',
-  'resume.css','app.js',
+  'index.html','resume.html','404.html','styles.css','catalog.css','skills.css',
+  'resume.css','app.js','content.js','skills.js',
   '_headers','_redirects','robots.txt','sitemap.xml',
 ];
-// Whole directories of public runtime files: tokens and styles, the journey and section
-// scripts, vendored Lenis, and self-hosted fonts.
-const directories=['css','js','vendor','fonts'];
+// Whole directories of public runtime files: the journey stylesheet and scripts, and vendored Lenis.
+const directories=['css','js','vendor'];
 await rm(output,{recursive:true,force:true});
 await mkdir(output,{recursive:true});
 for(const file of files)await cp(path.join(source,file),path.join(output,file));
@@ -44,7 +43,7 @@ async function inspect(dir){
     if(entry.isDirectory()){await inspect(file);continue;}
     const info=await stat(file);
     if(info.size>25*1024*1024)throw new Error(`Cloudflare Pages 25 MiB limit exceeded: ${path.relative(output,file)}`);
-    if(!/\.(html|css|js|json|svg|webp|jpg|png|pdf|txt|xml|woff2)$/.test(file)&&!['_headers','_redirects'].includes(entry.name))
+    if(!/\.(html|css|js|json|svg|webp|jpg|png|pdf|txt|xml)$/.test(file)&&!['_headers','_redirects'].includes(entry.name))
       throw new Error(`Unapproved public file: ${path.relative(output,file)}`);
     if(/\.(?:html|js|json)$/.test(file)){
       const text=await readFile(file,'utf8');

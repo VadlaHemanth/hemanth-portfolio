@@ -8,7 +8,7 @@
  * Compares public response bytes with committed public files, not the mutable
  * working tree. Does not build, commit, push, deploy, log in, or change DNS.
  * Report stays in ignored maintenance/performance, outside the public build.
- * Journey plates and fonts are small, so their bytes are always verified.
+ * Journey plates are small, so their bytes are always verified.
  */
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
@@ -44,7 +44,7 @@ const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const MiB=1024*1024;
 const report={
   checkedAt:new Date().toISOString(),url:base.href,expectedRevision:revision,previousRevision:previous,
-  method:'Normal public GET with revalidation; every public file, journey plate and font compared to explicit Git blobs. No deployment mutation.',
+  method:'Normal public GET with revalidation; every public file and journey plate compared to explicit Git blobs. No deployment mutation.',
   mediaByteIntegrity:'pending',
   files:[],media:[],mediaAggregates:[],privatePaths:[],checks:[],errors:[],
 };
@@ -100,9 +100,10 @@ function checkCache(route,value,immutable=false) {
 
 try {
   const tracked=new Set(git('ls-tree','-r','--name-only',revision,'--','website').toString().trim().split('\n'));
-  // Mutable files revalidate on every visit; journey plates and fonts are content-addressed and immutable.
+  // Mutable files revalidate on every visit; journey plates are content-addressed and immutable.
   const revalidating=[
-    ['index.html','/'],['app.js','/app.js'],['styles.css','/styles.css'],
+    ['index.html','/'],['app.js','/app.js'],['content.js','/content.js'],['skills.js','/skills.js'],
+    ['styles.css','/styles.css'],['catalog.css','/catalog.css'],['skills.css','/skills.css'],
     ['resume.html','/resume.html'],['resume.css','/resume.css'],['robots.txt','/robots.txt'],['sitemap.xml','/sitemap.xml'],
     ['assets/social-preview.jpg','/assets/social-preview.jpg'],['assets/Vadla-Hemanth-Resume.pdf','/assets/Vadla-Hemanth-Resume.pdf'],
     ['assets/journey/manifest.json','/assets/journey/manifest.json'],
@@ -112,7 +113,7 @@ try {
     if(/^(?:css|js|vendor)\/.+\.(?:css|js)$/.test(relative))revalidating.push([relative,'/'+relative]);
   }
   const manifest=JSON.parse(git('show',`${revision}:website/assets/journey/manifest.json`).toString());
-  const immutable=[['fonts/HubotSans-VF.woff2','/fonts/HubotSans-VF.woff2'],['fonts/MonaSans-VF.woff2','/fonts/MonaSans-VF.woff2']];
+  const immutable=[];
   for(const tier of Object.values(manifest.tiers))for(const file of Object.values(tier)) {
     const relative=file.src.replace(/^\.\//,'');
     immutable.push([relative,'/'+relative]);
@@ -154,7 +155,7 @@ try {
   // Metadata-only negative checks. Never fetch a personal source record's body.
   for(const route of [
     '/tests/performance.test.mjs','/package.json','/scripts/verify-deployment.mjs',
-    '/maintenance/performance/HANDOFF.md','/design/resume-data.json','/content.js',
+    '/maintenance/performance/HANDOFF.md','/design/resume-data.json','/content-enrichment.js',
     '/assets/motion/manifest.json','/downloads.html',
   ]) {
     try {

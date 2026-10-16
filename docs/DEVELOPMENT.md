@@ -3,6 +3,8 @@
 Source repository for a responsive personal portfolio. The website is plain HTML,
 CSS and JavaScript: a scroll-driven WebGL2 journey (camera computed in code, Lenis
 smoothing) followed by the portfolio sections. No build step and no framework.
+The header, the sections after the journey and the footer keep the editorial design
+of the previous version (system font stack, monospace labels, no web fonts).
 
 ## Project structure
 
@@ -76,8 +78,8 @@ The custom domain has a narrowly scoped Cache Rule:
 `http.host eq "portfolio.hemanthvadla.tech"`, Browser TTL **Respect origin TTL**.
 This prevents the zone's four-hour browser-cache default from overriding
 mutable scripts, résumé and social-image revalidation. Do not broaden the
-rule to other hosts. Content-hashed journey plates and fonts keep a one-year
-immutable cache policy.
+rule to other hosts. Content-hashed journey plates keep a one-year immutable
+cache policy.
 
 Retired initial-publication paths (`/tests/*`, package metadata and the old
 download page) bypass the outer cache only on the portfolio host. The Pages
@@ -93,7 +95,8 @@ python3 -m http.server 8080 --directory dist --bind 127.0.0.1
 
 Edit the public content modules and run `node website/build-content.mjs`.
 Selected work, smaller projects, experience and education are generated into
-`index.html` from the same source; `npm test` fails if the page falls out of sync.
+`index.html` from the same source, including the native case-study and disclosure
+fallbacks; `npm test` fails if the page falls out of sync.
 Private projects stay generic; their repository URLs are never published.
 
 The résumé builder reads only `design/resume-data.json`. Install ReportLab in a
@@ -134,9 +137,10 @@ layers positioned from the same state as the camera.
 Quality adapts at runtime: the render scale drops when frames run long, and on
 very slow GPUs the bloom passes switch off. Reduced motion, the header's motion
 switch, a missing WebGL2 context or a failed load show the static portrait and the
-full portfolio. The guided tour scrolls at a constant rate (which reproduces the
-authored pacing) and any wheel, touch, pointer or key input stops it. It ends on
-the final portrait. Skip links jump straight to the work.
+full portfolio. The opening keeps the previous version's copy: Explore my work and
+Skip to work both jump straight to the work, and the project cards open the same
+case-study dialogs as the Selected work section. On landscape screens the copy sits
+left of the face; on portrait screens it sits below the chin.
 
 ## Portable site
 
