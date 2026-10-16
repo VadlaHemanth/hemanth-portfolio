@@ -11,6 +11,7 @@ import {createTimeline, zoomCamera, CHAMBER_DEPTH, smoothstep} from "./timeline.
 import {Overlays, layoutCards} from "./overlays.js?v=20261015-v3";
 import {chooseTier, fetchAll} from "./assets.js?v=20261015-v3";
 import {initAmbient} from "./ambient.js?v=20261015-v3";
+import {CpuRenderer} from "./renderer2d.js?v=20261015-v3";
 
 const CORE_SIZE = 0.9;
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
@@ -68,7 +69,10 @@ export function initJourney() {
     goStatic("Reduced motion: the portfolio is shown without the camera journey.");
   }
   const context = loop.journey ? createContext(canvas) : null;
-  if (loop.journey && !context) goStatic("This browser cannot run the WebGL journey, so the portfolio is shown directly.");
+  // Without WebGL (no GPU, blocked drivers, hardened browsers) the same journey runs on the CPU.
+  const cpu = loop.journey && !context ? canvas.getContext("2d", {alpha: false, desynchronized: true}) : null;
+  if (loop.journey && !context && !cpu) goStatic("This browser cannot draw the journey, so the portfolio is shown directly.");
+  if (cpu) root.dataset.renderer = "cpu";
 
   let view = stableViewport();
   let manifest = null;
@@ -84,10 +88,14 @@ export function initJourney() {
   let lastVisual = 0;
   let speed = 0;
   let lastTime = 0;
-  let renderScale = coarse ? 0.85 : 1;
+  // The CPU path draws into a smaller backing store; the browser scales it up.
+  let renderScale = cpu ? 0.6 : coarse ? 0.85 : 1;
   const frameTimes = [];
   let qualityCooldown = 0;
   let eco = false;
+  let halfRate = false;
+  let frameCount = 0;
+  let drawCost = 0;
   let tour = null;
   let dpr = 1;
 
@@ -100,10 +108,10 @@ export function initJourney() {
     stage.style.setProperty("--stage-h", `${view.lvh}px`);
     stage.style.setProperty("--frame-h", `${view.svh}px`);
     sectionTop = root.getBoundingClientRect().top + window.scrollY;
-    dpr = Math.min(window.devicePixelRatio || 1, coarse ? 2 : 2);
+    dpr = cpu ? renderScale : Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(view.width * dpr);
     canvas.height = Math.round(view.lvh * dpr);
-    renderer?.resize(canvas.width, canvas.height, renderScale);
+    renderer?.resize(canvas.width, canvas.height, cpu ? 1 : renderScale);
   }
 
   function scrollVh(y) {
@@ -253,6 +261,16 @@ export function initJourney() {
     }
     if (frameTimes.length < 45) return;
     const avg = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
+    if (cpu) {
+      // CPU drawing scales with pixel count: trade resolution for a steady frame rate.
+      if (avg > 38 && renderScale > 0.45) renderScale = Math.max(0.45, renderScale - 0.1);
+      else if (avg < 22 && renderScale < 0.8) renderScale = Math.min(0.8, renderScale + 0.05);
+      else return;
+      measure();
+      qualityCooldown = 120;
+      frameTimes.length = 0;
+      return;
+    }
     const max = coarse ? 0.9 : 1;
     if (avg > 24 && renderScale <= 0.5 && !eco) {
       // Last resort on very slow GPUs: drop the bloom passes.
@@ -307,8 +325,17 @@ export function initJourney() {
     const state = timeline.stateAt(smoothScroll);
     const time = now / 1000;
     if (introStart < 0) introStart = time;
+    // On the CPU path, a steady 30 fps reads smoother than an uneven 40–60.
+    if (cpu && halfRate && (frameCount++ & 1)) return;
     const f = buildFrame(state, time);
+    const drawStart = performance.now();
     renderer.render(f);
+    window.__journeyDraws = (window.__journeyDraws || 0) + 1;
+    if (cpu) {
+      drawCost += (performance.now() - drawStart - drawCost) * 0.1;
+      // Throttle only when the browser itself is running fast; a busy machine needs every frame.
+      halfRate = drawCost > 11 && dt < 20;
+    }
     overlays.update(state, {width: view.width, height: view.svh}, {
       signalScreen: f.signalScreen || [view.width / 2, view.svh / 2],
       cardLayout: f.cardLayout || layoutCards(view.width, view.svh, state.focus, state.hold),
@@ -375,13 +402,13 @@ export function initJourney() {
       });
       plate = manifest.plate;
       const connection = navigator.connection || {};
-      const tierName = chooseTier({width: view.width, height: view.lvh, dpr: window.devicePixelRatio, coarse,
+      const tierName = cpu ? "low" : chooseTier({width: view.width, height: view.lvh, dpr: window.devicePixelRatio, coarse,
         memory: navigator.deviceMemory, cores: navigator.hardwareConcurrency, connection});
       const tier = manifest.tiers[tierName] || manifest.tiers.mid;
       root.dataset.tier = tierName;
       const order = ["L0", "L1", "L2", "L1b", "neural", "circuit", "core"].filter((k) => tier[k]);
       const files = order.map((key) => ({key, src: tier[key].src, bytes: tier[key].bytes}));
-      renderer = new JourneyRenderer(context, {shardCount: coarse ? 700 : 1400});
+      renderer = cpu ? new CpuRenderer(cpu) : new JourneyRenderer(context, {shardCount: coarse ? 700 : 1400});
       planes = planeUniforms(tier);
       measure();
       const repeat = {neural: true, circuit: true};
@@ -403,6 +430,7 @@ export function initJourney() {
         },
       });
       root.classList.add("is-loaded");
+      renderer.prepare?.(buildFrame(timeline.stateAt(0), 0).plates);
       // Phones skip the background field: it is subtle and costs memory and battery.
       if (!coarse) loop.ambient = initAmbient(document.querySelector("[data-ambient]"), keep);
       loop.ambient?.setActive(!visible);

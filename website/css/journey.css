@@ -442,3 +442,13 @@ html.journey-static .journey-hero { opacity: 1 !important; transform: none !impo
 }
 
 html.is-journey .site-header { background: transparent; border-color: transparent; }
+
+/* CPU fallback (no WebGL): flat surfaces instead of large blurred shadows, which a
+   software compositor would have to re-rasterise every frame. */
+.journey[data-renderer="cpu"] .journey-card {
+  box-shadow: none;
+  background: rgb(5 9 20 / 0.95);
+}
+.journey[data-renderer="cpu"] .journey-card::after { box-shadow: none; }
+.journey[data-renderer="cpu"] .journey-thought { text-shadow: 0 0 8px rgb(43 123 255 / 0.9); }
+.journey[data-renderer="cpu"] .journey-progress span { box-shadow: none; }
