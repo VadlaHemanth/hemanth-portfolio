@@ -43,6 +43,13 @@ journey runs forward and backward at the same pace instead of scrubbing a video.
   from the portrait's own crops, aligned to the portrait to under a pixel and
   colour-matched, so the zoom never visibly swaps one eye for another. The iris
   texture comes from a real photo of Hemanth's eye.
+- At rest (the first and the last frame) the journey shows Hemanth's approved original
+  photograph itself, framed exactly like the previous site's hero and always clear of the
+  header. It is the page's poster, so it is downloaded once, and it cross-fades into the
+  plates as the dive begins; the finishing effects (glow, grain, vignette) stay off it.
+- "Explore my work" plays the whole journey at one steady pace and stops on the closing
+  portrait, as the previous site's film did; any wheel, touch or key hands control back.
+  "Skip to work" goes straight to the work.
 - The opening pupil becomes a window into the neural passage, so there is no black
   gap between the eye and the tunnel. The window, the dilation and the dark rim all
   follow the pupil's outline as measured on the iris plate (its centre, radius and a

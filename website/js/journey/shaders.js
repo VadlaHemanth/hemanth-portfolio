@@ -57,6 +57,8 @@ uniform vec2 uPlateSize;
 uniform float uPxPerCss;
 uniform sampler2D uL0;
 uniform float uTexel0;
+uniform sampler2D uL0o;
+uniform float uOrig;
 uniform sampler2D uL1;
 uniform mat3 uM1;
 uniform vec3 uC1;
@@ -92,6 +94,9 @@ const float PLATE_BIAS = -0.5;
 vec3 sampleStack(vec2 P) {
   vec2 uv0 = P / uPlateSize;
   vec3 col = texture(uL0, uv0, PLATE_BIAS).rgb;
+  // At rest (first and last frame) the approved original photograph is shown as it is; it
+  // hands over to the plates as the dive begins. Same pixels, same place: no visible switch.
+  if (uOrig > 0.001) col = mix(col, texture(uL0o, uv0, PLATE_BIAS).rgb, uOrig);
   // Feather the plate into the black stage: toward its borders the near-black backdrop
   // is eased down to pure black (a natural vignette), so no rectangle edge ever shows.
   float edge = smoothstep(0.0, uEdges.x, uv0.x) * smoothstep(0.0, uEdges.y, 1.0 - uv0.x)
@@ -102,7 +107,7 @@ vec3 sampleStack(vec2 P) {
   if (uHasL1 > 0.5) {
     vec2 uv1 = (uM1 * vec3(P, 1.0)).xy;
     float inside = step(0.0, uv1.x) * step(uv1.x, 1.0) * step(0.0, uv1.y) * step(uv1.y, 1.0);
-    float when = smoothstep(0.45, 0.95, density / uTexel0);
+    float when = smoothstep(0.45, 0.95, density / uTexel0) * (1.0 - uOrig);
     float where = 1.0 - smoothstep(uC1.z * 0.58, uC1.z * 0.94, length(P - uC1.xy));
     col = mix(col, texture(uL1, uv1, PLATE_BIAS).rgb, inside * when * where);
   }
@@ -110,14 +115,14 @@ vec3 sampleStack(vec2 P) {
     // The other eye gets the same treatment, so both stay equally sharp mid-zoom.
     vec2 uv1b = (uM1b * vec3(P, 1.0)).xy;
     float inside = step(0.0, uv1b.x) * step(uv1b.x, 1.0) * step(0.0, uv1b.y) * step(uv1b.y, 1.0);
-    float when = smoothstep(0.45, 0.95, density / uTexel0);
+    float when = smoothstep(0.45, 0.95, density / uTexel0) * (1.0 - uOrig);
     float where = 1.0 - smoothstep(uC1b.z * 0.58, uC1b.z * 0.94, length(P - uC1b.xy));
     col = mix(col, texture(uL1b, uv1b, PLATE_BIAS).rgb, inside * when * where);
   }
   if (uHasL2 > 0.5) {
     vec2 uv2 = (uM2 * vec3(P, 1.0)).xy;
     float inside = step(0.0, uv2.x) * step(uv2.x, 1.0) * step(0.0, uv2.y) * step(uv2.y, 1.0);
-    float when = smoothstep(0.45, 0.95, density / uTexel1);
+    float when = smoothstep(0.45, 0.95, density / uTexel1) * (1.0 - uOrig);
     // The iris plate takes over inside the iris; the dark limbal ring hides the seam.
     float where = 1.0 - smoothstep(uC2.z * 0.86, uC2.z, length(P - uC2.xy));
     col = mix(col, texture(uL2, uv2, PLATE_BIAS).rgb, inside * when * where);
@@ -472,6 +477,7 @@ uniform float uGrain;
 uniform float uTime;
 uniform float uAspect;
 uniform float uFade;
+uniform float uPhoto;
 
 vec3 softClip(vec3 c) {
   vec3 over = max(c - 0.82, 0.0);
@@ -501,7 +507,8 @@ void main() {
     col.b = mix(col.b, texture(uScene, uv - off).b, 0.85);
   }
   col += texture(uBloom, uv).rgb * uBloomStrength;
-  col = softClip(col);
+  // The resting photograph keeps its own highlights; the soft clip is for the light show.
+  col = mix(softClip(col), col, uPhoto);
   vec2 q = (uv - 0.5) * vec2(uAspect, 1.0);
   float vig = smoothstep(1.35, 0.25, length(q) * 1.15);
   col *= mix(1.0, vig, uVignette);

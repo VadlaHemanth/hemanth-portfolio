@@ -123,6 +123,9 @@ export class JourneyRenderer {
       bindTexture(gl, 0, this.texture("L0"));
       gl.uniform1i(u.uL0, 0);
       gl.uniform1f(u.uTexel0, p.texel0);
+      bindTexture(gl, 4, this.texture("L0o"));
+      gl.uniform1i(u.uL0o, 4);
+      gl.uniform1f(u.uOrig, this.textures.L0o ? p.orig ?? 0 : 0);
       bindTexture(gl, 1, this.texture("L1"));
       gl.uniform1i(u.uL1, 1);
       gl.uniformMatrix3fv(u.uM1, false, p.m1);
@@ -267,6 +270,7 @@ export class JourneyRenderer {
     gl.uniform1f(c.uTime, f.time);
     gl.uniform1f(c.uAspect, this.width / this.height);
     gl.uniform1f(c.uFade, f.fade ?? 1);
+    gl.uniform1f(c.uPhoto, f.photo ?? 0);
     this.fullscreen();
     gl.bindVertexArray(null);
   }

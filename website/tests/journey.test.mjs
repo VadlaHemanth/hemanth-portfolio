@@ -134,3 +134,22 @@ test("the pupil geometry is the measured one: centred in the iris, slightly oval
   const iris = manifest.levels.L2;
   assert.ok(Math.hypot(iris.center[0] - plate.pupil[0], iris.center[1] - plate.pupil[1]) < 3);
 });
+
+test("the hero keeps the approved composition and the header never cuts the hair", () => {
+  const wide = plate.hero.wide;
+  for (const [w, h] of [...VIEWPORTS, [2220, 952], [1366, 657], [1280, 620], [3440, 1440]]) {
+    const top = w <= 600 ? 72 : 88;
+    const hero = heroFraming(w, h, plate, top);
+    const crown = hero.face[1] + (plate.hairTop - plate.face[1]) * hero.sigma;
+    assert.ok(crown >= top + 12, `${w}x${h}: crown ${crown.toFixed(1)} clears the ${top}px header`);
+    if (w / h >= 1.12) {
+      // Landscape: the previous site's crop of the photo, fitted to the screen (only lowered if needed).
+      const c = Math.min(w / wide.size[0], h / wide.size[1]);
+      assert.ok(Math.abs(hero.sigma - wide.scale * c) < 1e-9, `${w}x${h}: same scale as the approved hero`);
+      const x = (w - wide.size[0] * c) / 2 + (wide.offset[0] + plate.face[0] * wide.scale) * c;
+      assert.ok(Math.abs(hero.face[0] - x) < 1e-6, `${w}x${h}: same horizontal place`);
+      const y = (h - wide.size[1] * c) / 2 + (wide.offset[1] + plate.face[1] * wide.scale) * c;
+      assert.ok(hero.face[1] >= y - 1e-6, `${w}x${h}: lowered at most`);
+    }
+  }
+});

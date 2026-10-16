@@ -105,11 +105,15 @@ export function initJourney() {
   let stillDrawn = false;
   let dirty = true;
   let dpr = 1;
+  let headerBottom = 0;
+  let tour = null;
 
   function measure() {
     view = stableViewport();
+    // The fixed header's height (layout height: unaffected by any transform on scroll).
+    headerBottom = document.querySelector(".site-header")?.offsetHeight || 0;
     if (plate) {
-      timeline = createTimeline(view.width, view.svh, plate);
+      timeline = createTimeline(view.width, view.svh, plate, {top: headerBottom});
       root.style.height = `${Math.round(timeline.scrollTotal * view.svh + view.lvh)}px`;
     }
     stage.style.setProperty("--stage-h", `${view.lvh}px`);
@@ -191,6 +195,7 @@ export function initJourney() {
       bloomStrength: eco ? 0 : lerp(0.22, 0.9, state.portal),
       vignette: lerp(0.45, 0.62, state.portal),
       grain: noGrain ? 0 : 0.035,
+      photo: 0,
       fringe: 0,
       blur: 0,
       blurCenter: [0.5, 1 - frameCenter[1] / lvh],
@@ -204,13 +209,20 @@ export function initJourney() {
       // A slow breath while the visitor rests on the portrait (fades out as the dive begins).
       const rest = cpu ? 0 : Math.max(state.hero, state.final) * (1 - smoothstep(0, 0.2, state.zoomLog));
       const breath = rest * 0.0045 * Math.sin(time * (Math.PI * 2 / 5.5));
-      const cam = zoomCamera(state.zoomLog + breath, width, svh, plate, timeline.zoomLen);
+      const cam = zoomCamera(state.zoomLog + breath, width, svh, plate, timeline.zoomLen, headerBottom);
       const pupilR = plate.pupilRadius * (1 + 0.55 * state.dilation) * cam.sigma;
       windowCircle = [cam.pupil[0], cam.pupil[1], state.window > 0 ? pupilR * smoothstep(0, 1, state.window * 1.4) : 0];
       frameCenter[0] = cam.pupil[0];
       frameCenter[1] = cam.pupil[1];
+      // At rest the approved photograph is shown as it is: no glow, grain or vignette on it.
+      const orig = 1 - smoothstep(0, 0.35, state.zoomLog);
+      f.photo = orig;
+      f.bloomStrength *= 1 - orig;
+      f.vignette *= 1 - orig;
+      f.grain *= 1 - orig;
       f.plates = {
         zoomLog: state.zoomLog + breath,
+        orig,
         sigma: cam.sigma,
         pupilScreen: cam.pupil,
         pupil: plate.pupil,
@@ -325,6 +337,7 @@ export function initJourney() {
   function frame(now) {
     if (capture) return;
     requestAnimationFrame(frame);
+    if (tour) advanceTour(now);
     lenis.raf(now);
     const dt = lastTime ? Math.min(100, now - lastTime) : 16.7;
     lastTime = now;
@@ -376,8 +389,46 @@ export function initJourney() {
     html.classList.toggle("is-journey", on);
   }
 
+  // Guided play-through: "Explore my work" plays the whole journey at one steady pace, as the
+  // previous site's film did, and ends on the closing portrait. Any input hands control back.
+  function startTour() {
+    const from = lenis.scroll;
+    const to = sectionTop + timeline.scrollTotal * view.svh;
+    if (to - from < 4) return false;
+    tour = {from, to, elapsed: 0, last: performance.now(), duration: ((to - from) / view.svh / 0.42) * 1000};
+    html.classList.add("is-touring");
+    return true;
+  }
+  function stopTour() {
+    if (!tour) return;
+    tour = null;
+    html.classList.remove("is-touring");
+  }
+  function advanceTour(now) {
+    // Advance by frame time, capped, so a stalled frame never makes the guide jump ahead.
+    tour.elapsed += clamp(now - tour.last, 0, 50);
+    tour.last = now;
+    const t = clamp(tour.elapsed / tour.duration);
+    // Ramps of ~0.6 s at either end; constant speed in between.
+    const ramp = Math.min(0.08, 600 / tour.duration);
+    const e = t < ramp ? (t * t) / (2 * ramp * (1 - ramp)) : t > 1 - ramp ? 1 - ((1 - t) ** 2) / (2 * ramp * (1 - ramp)) : (t - ramp / 2) / (1 - ramp);
+    lenis.scrollTo(lerp(tour.from, tour.to, e), {immediate: true, force: true});
+    if (t >= 1) stopTour();
+  }
+  for (const type of ["wheel", "touchstart", "pointerdown", "keydown"]) {
+    window.addEventListener(type, (event) => {
+      if (type === "pointerdown" && event.target.closest?.("[data-guide]")) return;
+      stopTour();
+    }, {passive: true});
+  }
+  root.querySelectorAll("[data-guide]").forEach((button) => button.addEventListener("click", (event) => {
+    // Without the journey (static page, reduced motion, still loading) the link simply goes to the work.
+    if (!loop.journey || !ready || !timeline) return;
+    if (startTour()) event.preventDefault();
+  }));
   document.querySelectorAll("a[href='#work'][data-skip]").forEach((a) => a.addEventListener("click", (event) => {
     event.preventDefault();
+    stopTour();
     const work = document.getElementById("work");
     if (!work) return;
     lenis.scrollTo(work, {immediate: true, force: true});
@@ -401,7 +452,9 @@ export function initJourney() {
         memory: navigator.deviceMemory, cores: navigator.hardwareConcurrency, connection});
       const tier = manifest.tiers[tierName] || manifest.tiers.mid;
       root.dataset.tier = tierName;
-      const order = ["L0", "L1", "L2", "L1b", "neural", "circuit", "core"].filter((k) => tier[k]);
+      // The original photograph first (it is the page's poster, usually already cached), so the
+      // hero appears at once; then the plates for the dive, then the passage.
+      const order = ["L0o", "L0", "L1", "L2", "L1b", "neural", "circuit", "core"].filter((k) => tier[k]);
       const files = order.map((key) => ({key, src: tier[key].src, bytes: tier[key].bytes}));
       const cores = navigator.hardwareConcurrency || 2;
       if (cpu) {
@@ -421,7 +474,7 @@ export function initJourney() {
           // Decoded images are freed as soon as the renderer has its own copy.
           bitmap.close?.();
           dirty = true;
-          if (key === "L0" && !heroShown) {
+          if ((key === "L0o" || (key === "L0" && !tier.L0o)) && !heroShown) {
             heroShown = true;
             ready = true;
             root.classList.add("is-ready");
@@ -464,6 +517,7 @@ export function initJourney() {
   window.addEventListener("portfolio:motionchange", (event) => {
     lenis.options.smoothWheel = !event.detail?.reduced;
     if (event.detail?.reduced) {
+      stopTour();
       goStatic("Reduced motion: the portfolio is shown without the camera journey.");
     } else if (html.classList.contains("journey-static")) {
       if (!(context || cpu) || !renderer) {

@@ -332,7 +332,7 @@ export class CpuRenderer {
     if (!c) return null;
     const ctx = c.getContext("2d");
     ctx.globalCompositeOperation = "destination-in";
-    if (key === "L0") {
+    if (key === "L0" || key === "L0o") {
       // Feather the portrait into the black stage; each ramp spans the whole image.
       const [l, r, t, b] = p.edges;
       const W = c.width;
@@ -373,7 +373,7 @@ export class CpuRenderer {
   }
 
   prepare(p) {
-    for (const key of ["L0", "L1", "L1b", "L2"]) this.plate(key, p);
+    for (const key of ["L0o", "L0", "L1", "L1b", "L2"]) this.plate(key, p);
   }
 
   /** Canvas transform for a plate whose pixels map to the portrait by uv = M·P + t. */
@@ -399,40 +399,41 @@ export class CpuRenderer {
     this.ctx.drawImage(img, 0, 0);
   }
 
-  /** The resting portrait: an exact pre-scaled copy blitted on whole pixels is as sharp as it gets. */
-  drawPortrait(L0, t) {
+  /** A portrait image: at the exact resting scale its pre-scaled copy is blitted on whole pixels. */
+  drawPortrait(img, t) {
     const scale = t[0];
     const hero = this.heroCopy;
-    if (hero && hero.source === L0 && Math.abs(scale / hero.scale - 1) < 0.004) {
+    if (hero && hero.source === img && Math.abs(scale / hero.scale - 1) < 0.004) {
       this.ctx.setTransform(1, 0, 0, 1, 0, 0);
       this.ctx.drawImage(hero.canvas, Math.round(t[4]), Math.round(t[5]));
       return;
     }
-    this.drawMipped(L0, t);
+    this.drawMipped(img, t);
   }
 
-  /** Make the exact copy of the portrait for the hero framing (once per viewport size). */
-  makeHeroCopy(p, k) {
-    const L0 = this.plate("L0", p);
-    if (!L0) return;
-    const scale = (k * p.sigma) / (L0.width / p.plateSize[0]);
-    if (this.heroCopy && this.heroCopy.source === L0 && Math.abs(scale / this.heroCopy.scale - 1) < 0.004) return;
-    const src = L0.levels[0];
-    const w = Math.max(1, Math.round(L0.width * scale));
-    const h = Math.max(1, Math.round(L0.levels[0].height * scale));
+  /** Make the exact copy of the resting portrait for the hero framing (once per viewport size). */
+  makeHeroCopy(img, p, k) {
+    const scale = (k * p.sigma) / (img.width / p.plateSize[0]);
+    if (this.heroCopy && this.heroCopy.source === img && Math.abs(scale / this.heroCopy.scale - 1) < 0.004) return;
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.levels[0].height * scale));
     const canvas = makeCanvas(w, h);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(src, 0, 0, w, h);
-    this.heroCopy = {source: L0, scale, canvas};
+    ctx.drawImage(img.levels[0], 0, 0, w, h);
+    this.heroCopy = {source: img, scale, canvas};
   }
 
   drawPlates(f, k) {
     const ctx = this.ctx;
     const p = f.plates;
     const L0 = this.plate("L0", p);
-    if (!L0) return;
-    if (Math.abs(p.zoomLog) < 1e-6) this.makeHeroCopy(p, k);
+    // At rest (first and last frame) the approved original photograph is shown as it is.
+    const original = this.plate("L0o", p);
+    const orig = original ? p.orig ?? 0 : 0;
+    if (!L0 && !original) return;
+    const resting = orig >= 0.999 ? original : L0;
+    if (Math.abs(p.zoomLog) < 1e-6 && resting) this.makeHeroCopy(resting, p, k);
     // The screen's corners in portrait coordinates decide which layers are needed at all.
     const [vw, vh] = f.viewport;
     const corners = [[0, 0], [vw, 0], [0, vh], [vw, vh]].map(([x, y]) => [
@@ -447,7 +448,7 @@ export class CpuRenderer {
     };
     const density = p.sigma * k;
     const layers = [["L1", p.m1, p.c1, p.texel0, 0.58], ["L1b", p.m1b, p.c1b, p.texel0, 0.58], ["L2", p.m2, p.c2, p.texel1, 0.86]]
-      .map(([key, m, c, texel, inner]) => ({key, m, c, inner, when: this.plate(key, p) ? smooth(0.45, 0.95, density / texel) : 0}))
+      .map(([key, m, c, texel, inner]) => ({key, m, c, inner, when: this.plate(key, p) ? smooth(0.45, 0.95, density / texel) * (1 - orig) : 0}))
       .filter((l) => l.when > 0.001 && visible(l.c));
     // Skip any layer that a fully opaque layer above it already covers.
     const top = [...layers].reverse().find((l) => l.when >= 0.999 && covers(l.c, l.inner));
@@ -468,8 +469,17 @@ export class CpuRenderer {
       ctx.clip("evenodd");
     }
     if (start < 0) {
-      const s = (k * p.sigma) / (L0.width / p.plateSize[0]);
-      this.drawPortrait(L0, [s, 0, 0, s, k * (p.pupilScreen[0] - p.sigma * p.pupil[0]), k * (p.pupilScreen[1] - p.sigma * p.pupil[1])]);
+      const portrait = (img) => {
+        const s = (k * p.sigma) / (img.width / p.plateSize[0]);
+        this.drawPortrait(img, [s, 0, 0, s, k * (p.pupilScreen[0] - p.sigma * p.pupil[0]), k * (p.pupilScreen[1] - p.sigma * p.pupil[1])]);
+      };
+      // The original hands over to the plate as the dive begins: same pixels, same place.
+      if (L0 && orig < 0.999) portrait(L0);
+      if (original && orig > 0.001) {
+        ctx.globalAlpha = orig;
+        portrait(original);
+        ctx.globalAlpha = 1;
+      }
     }
     for (const layer of layers.slice(Math.max(0, start))) {
       const mipped = this.plate(layer.key, p);

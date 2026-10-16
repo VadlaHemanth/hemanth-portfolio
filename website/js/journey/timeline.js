@@ -57,12 +57,21 @@ const THOUGHT_WINDOW = 0.075;
 
 /**
  * Where the portrait sits for a viewport, in CSS pixels.
- * plate: {width, height, face:[x,y], pupil:[x,y], pupilRadius, irisRadius}
+ * plate: {width, height, face:[x,y], pupil:[x,y], pupilRadius, irisRadius, hero?, hairTop?}
+ * top: the bottom of the fixed header; the crown of the hair always stays clear of it.
  */
-export function heroFraming(width, height, plate) {
+export function heroFraming(width, height, plate, top = 0) {
   const aspect = width / height;
+  const wide = plate.hero?.wide;
   let sigma, faceX, faceY;
-  if (aspect >= 1.12) {
+  if (aspect >= 1.12 && wide) {
+    // Landscape: the approved composition of the previous site — the photo inside its
+    // landscape crop, and that crop fitted to the screen.
+    const c = Math.min(width / wide.size[0], height / wide.size[1]);
+    sigma = wide.scale * c;
+    faceX = (width - wide.size[0] * c) / 2 + (wide.offset[0] + plate.face[0] * wide.scale) * c;
+    faceY = (height - wide.size[1] * c) / 2 + (wide.offset[1] + plate.face[1] * wide.scale) * c;
+  } else if (aspect >= 1.12) {
     // Landscape: the face sits right of centre and the copy takes the left.
     sigma = height / plate.height * (aspect > 2.1 ? 1.08 : 1);
     faceX = width * (aspect >= 1.45 ? 0.68 : 0.63);
@@ -73,20 +82,26 @@ export function heroFraming(width, height, plate) {
     faceX = width * 0.5;
     faceY = height * (aspect < 0.62 ? 0.33 : 0.36);
   }
+  if (top > 0 && plate.hairTop != null) {
+    // Never let the header cut the hair: lower the photo until the crown clears it.
+    const crown = faceY + (plate.hairTop - plate.face[1]) * sigma;
+    const clear = top + Math.max(12, height * 0.025);
+    if (crown < clear) faceY += clear - crown;
+  }
   const pupil = [faceX + (plate.pupil[0] - plate.face[0]) * sigma, faceY + (plate.pupil[1] - plate.face[1]) * sigma];
   return {sigma, pupil, face: [faceX, faceY]};
 }
 
 /** Visual length of the dive from the hero framing until the dilated pupil covers the screen. */
-export function zoomLength(width, height, plate, dilation = 1.55) {
+export function zoomLength(width, height, plate, dilation = 1.55, top = 0) {
   const halfDiagonal = Math.hypot(width, height) / 2;
   const sigmaEnd = halfDiagonal * 1.04 / (plate.pupilRadius * dilation);
-  return Math.log(sigmaEnd / heroFraming(width, height, plate).sigma);
+  return Math.log(sigmaEnd / heroFraming(width, height, plate, top).sigma);
 }
 
 /** The zoom camera: scale and on-screen pupil position for a log-zoom value. */
-export function zoomCamera(zoomLog, width, height, plate, length) {
-  const hero = heroFraming(width, height, plate);
+export function zoomCamera(zoomLog, width, height, plate, length, top = 0) {
+  const hero = heroFraming(width, height, plate, top);
   const sigma = hero.sigma * Math.exp(zoomLog);
   // The pupil glides to the centre early in the dive, while the eye is still small.
   const glide = smoothstep(0, 0.72, zoomLog / length);
@@ -121,8 +136,8 @@ function chapterList(zoomLen) {
  * Build the journey for a viewport. Returns its scroll length (in viewport
  * heights) and stateAt(scrollViewportHeights) → camera and overlay state.
  */
-export function createTimeline(width, height, plate) {
-  const zoomLen = zoomLength(width, height, plate);
+export function createTimeline(width, height, plate, {top = 0} = {}) {
+  const zoomLen = zoomLength(width, height, plate, 1.55, top);
   const chapters = chapterList(zoomLen);
   let cursor = 0;
   for (const c of chapters) {
@@ -185,7 +200,7 @@ export function createTimeline(width, height, plate) {
     return (lo + (span > 0 ? (s - scrollAt[lo]) / span : 0)) * dv;
   }
 
-  const ctx = {width, height, plate, zoomLen, showProgress: 0};
+  const ctx = {width, height, plate, top, zoomLen, showProgress: 0};
 
   const showStart = chapters.find((c) => c.phase === "show").start;
   const showEnd = chapters.filter((c) => c.phase === "show").at(-1);
@@ -236,10 +251,10 @@ function baseState() {
 
 /** Forward-path state for the travelling chapters, shared by the dive and the pull-back. */
 function travel(id, t, ctx, s) {
-  const {zoomLen, plate, width, height} = ctx;
+  const {zoomLen, plate, width, height, top} = ctx;
   if (id === "zoom") {
     s.zoomLog = t * zoomLen;
-    const sigma = heroFraming(width, height, plate).sigma * Math.exp(s.zoomLog);
+    const sigma = heroFraming(width, height, plate, top).sigma * Math.exp(s.zoomLog);
     const iris = plate.irisRadius * sigma / (Math.min(width, height) / 2);
     s.irisFx = smoothstep(0.32, 1.35, iris);
     s.dilation = smoothstep(0.5, 2.2, iris);

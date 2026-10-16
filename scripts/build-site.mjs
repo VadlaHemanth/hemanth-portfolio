@@ -25,7 +25,7 @@ for(const directory of directories)await cp(path.join(source,directory),path.joi
 // Only journey files named by the manifest ship; the old film archive never does.
 const journey=JSON.parse(await readFile(path.join(source,'assets/journey/manifest.json'),'utf8'));
 const activeJourney=new Set(['assets/journey/manifest.json','assets/journey/poster.webp']);
-for(const tier of Object.values(journey.tiers))for(const file of Object.values(tier))activeJourney.add(file.src.replace(/^\.\//,''));
+for(const tier of Object.values(journey.tiers))for(const file of Object.values(tier))activeJourney.add(file.src.replace(/^\.\//,'').replace(/\?.*$/,''));
 await cp(path.join(source,'assets'),path.join(output,'assets'),{
   recursive:true,
   filter:filename=>{

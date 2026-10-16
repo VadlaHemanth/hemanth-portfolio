@@ -65,7 +65,15 @@ test('Pages cache rules never join contradictory lifetimes, and mutable code rev
     assert.match(matching[0].value,/\bmust-revalidate\b/);
     assert.doesNotMatch(matching[0].value,/\bimmutable\b/);
   }
-  const immutable=Object.values(journey.tiers).flatMap(t=>Object.values(t).map(f=>f.src.slice(1)));
+  // The resting photograph is the page's poster: one URL for the <img> and the journey, versioned
+  // by content so a new photo is never served stale, with a one-day lifetime of its own.
+  const poster=Object.values(journey.tiers).map(t=>t.L0o?.src).filter(Boolean);
+  const html=await readFile(path.join(website,'index.html'),'utf8');
+  for (const src of poster) {
+    assert.match(src,/^\.\/assets\/journey\/poster\.webp\?v=[a-f0-9]{10}$/,'poster URL carries its content version');
+    assert(html.includes(`src="${src}"`),'the page asks for the same poster URL as the journey');
+  }
+  const immutable=Object.values(journey.tiers).flatMap(t=>Object.entries(t).filter(([key])=>key!=='L0o').map(([,f])=>f.src.slice(1)));
   for (const route of immutable) {
     const matching=rules.filter(rule=>rule.pattern.test(route));
     assert.equal(matching.length,1,`${route}: no blanket max-age=0 conflict`);

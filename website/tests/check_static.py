@@ -80,19 +80,23 @@ class StaticChecks(unittest.TestCase):
         hooks = [attrs.get("data-j") for _, attrs in self.nodes if "data-j" in attrs]
         self.assertEqual(hooks, ["hero", "thought", "cards", "cards-title", "final", "progress", "load", "status"])
         self.assertIn("data-journey-stage", self.html)
-        # No film, loader dialog or guided tour; every way past the opening goes straight to the work.
+        # No film or loader dialog. As on the previous site, "Explore my work" plays the journey
+        # (a guided scroll, still a plain link to the work without JavaScript) and the other
+        # ways past the opening go straight to the work.
         self.assertNotIn("experience-loader", self.ids)
         self.assertNotIn("intro-video", self.ids)
-        self.assertNotIn("data-guide", self.html)
         self.assertNotIn("data-ambient", self.html)
+        guides = [attrs for tag, attrs in self.nodes if tag == "a" and "data-guide" in attrs]
+        self.assertEqual(len(guides), 1)
+        self.assertEqual(guides[0]["href"], "#work")
         skips = [attrs for tag, attrs in self.nodes if tag == "a" and "data-skip" in attrs]
-        self.assertEqual(len(skips), 3)
+        self.assertEqual(len(skips), 2)
         self.assertTrue(all(attrs["href"] == "#work" for attrs in skips))
         opening = re.search(r'<div id="story-opening".*?</div>\s*</div>', self.html, re.S).group(0)
         self.assertIn("I don’t just<br>learn.<br><span>I build.</span>", opening)
         self.assertIn("Data Science student &amp; builder / Hyderabad", opening)
         self.assertIn("Applied AI · Computer vision<br>Full-stack systems", opening)
-        self.assertIn('class="button button-primary" href="#work" data-skip>Explore my work', opening)
+        self.assertIn('class="button button-primary" href="#work" data-guide>Explore my work', opening)
         self.assertIn('class="text-link hero-direct" href="#work" data-skip>Skip to work', opening)
         # The three cards lead with Attendance ERP and open the same case studies as the work section.
         cards = [attrs for _, attrs in self.nodes if "data-card" in attrs]
