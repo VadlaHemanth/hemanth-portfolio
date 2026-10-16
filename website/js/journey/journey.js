@@ -4,14 +4,12 @@
  * (smoothed by Lenis), so the journey plays forward and backward at one
  * consistent pace instead of scrubbing a video.
  */
-import Lenis from "../../vendor/lenis.js?v=20261015-v3";
-import {createContext} from "./gl.js?v=20261015-v3";
-import {JourneyRenderer} from "./renderer.js?v=20261015-v3";
-import {createTimeline, zoomCamera, CHAMBER_DEPTH, smoothstep} from "./timeline.js?v=20261015-v3";
-import {Overlays, layoutCards} from "./overlays.js?v=20261015-v3";
-import {chooseTier, fetchAll} from "./assets.js?v=20261015-v3";
-import {initAmbient} from "./ambient.js?v=20261015-v3";
-import {CpuRenderer} from "./renderer2d.js?v=20261015-v3";
+import Lenis from "../../vendor/lenis.js?v=20261016-v3b";
+import {createContext} from "./gl.js?v=20261016-v3b";
+import {JourneyRenderer} from "./renderer.js?v=20261016-v3b";
+import {createTimeline, zoomCamera, CHAMBER_DEPTH, smoothstep} from "./timeline.js?v=20261016-v3b";
+import {Overlays, layoutCards} from "./overlays.js?v=20261016-v3b";
+import {chooseTier, fetchAll} from "./assets.js?v=20261016-v3b";
 
 const CORE_SIZE = 0.9;
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
@@ -58,6 +56,13 @@ export function initJourney() {
     html.classList.add("journey-static");
     html.classList.remove("is-journey");
     root.style.removeProperty("height");
+    // Whatever the journey last did to its hero copy, the static page shows it, usable.
+    const hero = root.querySelector("[data-j='hero']");
+    if (hero) {
+      hero.inert = false;
+      hero.removeAttribute("data-hidden");
+      for (const prop of ["opacity", "transform", "--squeeze"]) hero.style.removeProperty(prop);
+    }
     if (status) status.textContent = reason;
     loop.journey = false;
   }
@@ -77,6 +82,7 @@ export function initJourney() {
   let view = stableViewport();
   let manifest = null;
   let plate = null;
+  let pupilShape = [0, 0];
   let timeline = null;
   let renderer = null;
   let overlays = new Overlays(root);
@@ -88,15 +94,16 @@ export function initJourney() {
   let lastVisual = 0;
   let speed = 0;
   let lastTime = 0;
-  // The CPU path draws into a smaller backing store; the browser scales it up.
-  let renderScale = cpu ? 0.6 : coarse ? 0.85 : 1;
+  // WebGL renders at a scale that adapts to the GPU; the CPU renderer manages its own resolution.
+  let renderScale = coarse ? 0.85 : 1;
   const frameTimes = [];
   let qualityCooldown = 0;
   let eco = false;
-  let halfRate = false;
-  let frameCount = 0;
-  let drawCost = 0;
-  let tour = null;
+  // CPU path: draw only when something changed, and once more, sharp, when the visitor pauses.
+  let lastSignature = "";
+  let lastChange = 0;
+  let stillDrawn = false;
+  let dirty = true;
   let dpr = 1;
 
   function measure() {
@@ -108,10 +115,17 @@ export function initJourney() {
     stage.style.setProperty("--stage-h", `${view.lvh}px`);
     stage.style.setProperty("--frame-h", `${view.svh}px`);
     sectionTop = root.getBoundingClientRect().top + window.scrollY;
-    dpr = cpu ? renderScale : Math.min(window.devicePixelRatio || 1, 2);
+    if (cpu) {
+      dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      renderer?.setViewport(view.width, view.lvh, dpr);
+      if (plate) renderer?.warm([view.width / 2, view.svh / 2, Math.min(view.width, view.svh) / 2]);
+      dirty = true;
+      return;
+    }
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(view.width * dpr);
     canvas.height = Math.round(view.lvh * dpr);
-    renderer?.resize(canvas.width, canvas.height, cpu ? 1 : renderScale);
+    renderer?.resize(canvas.width, canvas.height, renderScale);
   }
 
   function scrollVh(y) {
@@ -187,7 +201,7 @@ export function initJourney() {
     let windowCircle = [frameCenter[0], frameCenter[1], 1e5];
     if (state.portal < 0.999) {
       // A slow breath while the visitor rests on the portrait (fades out as the dive begins).
-      const rest = Math.max(state.hero, state.final) * (1 - smoothstep(0, 0.2, state.zoomLog));
+      const rest = cpu ? 0 : Math.max(state.hero, state.final) * (1 - smoothstep(0, 0.2, state.zoomLog));
       const breath = rest * 0.0045 * Math.sin(time * (Math.PI * 2 / 5.5));
       const cam = zoomCamera(state.zoomLog + breath, width, svh, plate, timeline.zoomLen);
       const pupilR = plate.pupilRadius * (1 + 0.55 * state.dilation) * cam.sigma;
@@ -195,11 +209,13 @@ export function initJourney() {
       frameCenter[0] = cam.pupil[0];
       frameCenter[1] = cam.pupil[1];
       f.plates = {
+        zoomLog: state.zoomLog + breath,
         sigma: cam.sigma,
         pupilScreen: cam.pupil,
         pupil: plate.pupil,
         plateSize: [plate.width, plate.height],
         pupilRadius: plate.pupilRadius,
+        pupilShape,
         irisRadius: plate.irisRadius,
         dilation: state.dilation,
         irisFx: state.irisFx,
@@ -224,6 +240,7 @@ export function initJourney() {
         coreSize: CORE_SIZE,
         reveal: state.portal,
         window: windowCircle,
+        windowShape: pupilShape,
         flash: Math.max(flashBurst, flashCollapse * 0.8),
         coreDim: 1 - 0.62 * smoothstep(0.3, 0.9, state.assemble) * (1 - smoothstep(0.35, 1, state.collapse)),
         signal: [...sig.head, ...sig.tail],
@@ -261,16 +278,6 @@ export function initJourney() {
     }
     if (frameTimes.length < 45) return;
     const avg = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
-    if (cpu) {
-      // CPU drawing scales with pixel count: trade resolution for a steady frame rate.
-      if (avg > 38 && renderScale > 0.45) renderScale = Math.max(0.45, renderScale - 0.1);
-      else if (avg < 22 && renderScale < 0.8) renderScale = Math.min(0.8, renderScale + 0.05);
-      else return;
-      measure();
-      qualityCooldown = 120;
-      frameTimes.length = 0;
-      return;
-    }
     const max = coarse ? 0.9 : 1;
     if (avg > 24 && renderScale <= 0.5 && !eco) {
       // Last resort on very slow GPUs: drop the bloom passes.
@@ -291,23 +298,33 @@ export function initJourney() {
     }
   }
 
+  /** Draw a frame; overlays follow the frame actually drawn (the CPU may finish it a moment later). */
+  function draw(state, f, done) {
+    f.after = () => {
+      overlays.update(state, {width: view.width, height: view.svh}, {
+        signalScreen: f.signalScreen || [view.width / 2, view.svh / 2],
+        cardLayout: f.cardLayout || layoutCards(view.width, view.svh, state.focus, state.hold),
+      });
+      window.__journeyDraws = (window.__journeyDraws || 0) + 1;
+      done?.();
+    };
+    renderer.render(f);
+    if (!cpu) f.after();
+  }
+
   function renderAt(scroll, time, velocity = 0) {
     const state = timeline.stateAt(scroll);
     speed = velocity;
     const f = buildFrame(state, time);
-    renderer.render(f);
-    overlays.update(state, {width: view.width, height: view.svh}, {
-      signalScreen: f.signalScreen || [view.width / 2, view.svh / 2],
-      cardLayout: f.cardLayout || layoutCards(view.width, view.svh, state.focus, state.hold),
-    });
-    return state;
+    // Capture frames are stills: the CPU renderer draws them at full resolution.
+    f.still = true;
+    return new Promise((resolve) => draw(state, f, () => resolve(state)));
   }
 
   function frame(now) {
     if (capture) return;
     requestAnimationFrame(frame);
     lenis.raf(now);
-    if (tour) advanceTour(now);
     const dt = lastTime ? Math.min(100, now - lastTime) : 16.7;
     lastTime = now;
     // The header's journey styling follows the scroll position even when the stage is off screen.
@@ -325,21 +342,29 @@ export function initJourney() {
     const state = timeline.stateAt(smoothScroll);
     const time = now / 1000;
     if (introStart < 0) introStart = time;
-    // On the CPU path, a steady 30 fps reads smoother than an uneven 40–60.
-    if (cpu && halfRate && (frameCount++ & 1)) return;
-    const f = buildFrame(state, time);
-    const drawStart = performance.now();
-    renderer.render(f);
-    window.__journeyDraws = (window.__journeyDraws || 0) + 1;
     if (cpu) {
-      drawCost += (performance.now() - drawStart - drawCost) * 0.1;
-      // Throttle only when the browser itself is running fast; a busy machine needs every frame.
-      halfRate = drawCost > 11 && dt < 20;
+      // Draw only when the picture changes: while scrolling, while the light-in plays, after
+      // a load or resize. Once the visitor pauses, one last frame is drawn at full resolution.
+      const settling = time - introStart < 1.6;
+      const signature = `${smoothScroll.toFixed(5)}|${view.width}x${view.lvh}`;
+      if (signature !== lastSignature || settling || dirty) {
+        lastSignature = signature;
+        lastChange = now;
+        stillDrawn = false;
+        dirty = false;
+      } else if (stillDrawn || now - lastChange < 220) {
+        return;
+      }
+      const f = buildFrame(state, time);
+      if (now - lastChange >= 220) {
+        f.still = true;
+        stillDrawn = true;
+      }
+      draw(state, f);
+      return;
     }
-    overlays.update(state, {width: view.width, height: view.svh}, {
-      signalScreen: f.signalScreen || [view.width / 2, view.svh / 2],
-      cardLayout: f.cardLayout || layoutCards(view.width, view.svh, state.focus, state.hold),
-    });
+    const f = buildFrame(state, time);
+    draw(state, f);
     adaptQuality(dt);
   }
 
@@ -350,43 +375,8 @@ export function initJourney() {
     html.classList.toggle("is-journey", on);
   }
 
-  // Guided tour: constant scroll speed reproduces the authored pace exactly.
-  function startTour() {
-    if (!ready || !loop.journey) return;
-    const from = lenis.scroll;
-    const to = sectionTop + timeline.scrollTotal * view.svh;
-    if (to - from < 4) return;
-    const remaining = (to - from) / view.svh;
-    tour = {from, to, start: performance.now(), duration: (remaining / 0.44) * 1000};
-    html.classList.add("is-touring");
-  }
-  function stopTour() {
-    if (!tour) return;
-    tour = null;
-    html.classList.remove("is-touring");
-  }
-  function advanceTour(now) {
-    const t = clamp((now - tour.start) / tour.duration);
-    // Ramps of ~0.6 s at either end; constant speed in between.
-    const ramp = Math.min(0.08, 600 / tour.duration);
-    const e = t < ramp ? (t * t) / (2 * ramp * (1 - ramp)) : t > 1 - ramp ? 1 - ((1 - t) ** 2) / (2 * ramp * (1 - ramp)) : (t - ramp / 2) / (1 - ramp);
-    lenis.scrollTo(lerp(tour.from, tour.to, e), {immediate: true, force: true});
-    if (t >= 1) stopTour();
-  }
-  for (const type of ["wheel", "touchstart", "pointerdown", "keydown"]) {
-    window.addEventListener(type, (event) => {
-      if (type === "pointerdown" && event.target.closest?.("[data-guide]")) return;
-      stopTour();
-    }, {passive: true});
-  }
-  root.querySelectorAll("[data-guide]").forEach((button) => button.addEventListener("click", (event) => {
-    if (!loop.journey || !ready) return;
-    event.preventDefault();
-    startTour();
-  }));
   document.querySelectorAll("a[href='#work'][data-skip]").forEach((a) => a.addEventListener("click", (event) => {
     event.preventDefault();
-    stopTour();
     const work = document.getElementById("work");
     if (!work) return;
     lenis.scrollTo(work, {immediate: true, force: true});
@@ -401,27 +391,35 @@ export function initJourney() {
         return r.json();
       });
       plate = manifest.plate;
+      // The pupil's measured outline is a touch oval: R(θ) = R0·(1 + e·cos 2(θ − φ)).
+      const [e, phi] = plate.pupilShape || [0, 0];
+      pupilShape = [e * Math.cos(2 * phi), e * Math.sin(2 * phi)];
       const connection = navigator.connection || {};
-      const tierName = cpu ? "low" : chooseTier({width: view.width, height: view.lvh, dpr: window.devicePixelRatio, coarse,
+      // Both renderers get the sharpest media the screen can show (the CPU renderer mips it itself).
+      const tierName = chooseTier({width: view.width, height: view.lvh, dpr: window.devicePixelRatio, coarse,
         memory: navigator.deviceMemory, cores: navigator.hardwareConcurrency, connection});
       const tier = manifest.tiers[tierName] || manifest.tiers.mid;
       root.dataset.tier = tierName;
       const order = ["L0", "L1", "L2", "L1b", "neural", "circuit", "core"].filter((k) => tier[k]);
       const files = order.map((key) => ({key, src: tier[key].src, bytes: tier[key].bytes}));
-      renderer = cpu ? new CpuRenderer(cpu) : new JourneyRenderer(context, {shardCount: coarse ? 700 : 1400});
+      const cores = navigator.hardwareConcurrency || 2;
+      if (cpu) {
+        // Only machines without WebGL download the CPU renderer.
+        const {CpuRenderer} = await import("./renderer2d.js?v=20261016-v3b");
+        renderer = new CpuRenderer(cpu, {workers: cores >= 4 ? 2 : cores >= 2 ? 1 : 0});
+      } else renderer = new JourneyRenderer(context, {shardCount: coarse ? 700 : 1400});
       planes = planeUniforms(tier);
       measure();
       const repeat = {neural: true, circuit: true};
-      const keep = {};
       let heroShown = false;
       loop.files = files;
       await fetchAll(files, {
         onProgress: (p) => loaderLine?.style.setProperty("--load", p.toFixed(4)),
         onFile: (key, bitmap) => {
           renderer.setTexture(key, bitmap, {repeat: !!repeat[key]});
-          // The ambient field reuses the two tunnel textures; everything else is freed at once.
-          if (key === "neural" || key === "circuit") keep[key] = bitmap;
-          else bitmap.close?.();
+          // Decoded images are freed as soon as the renderer has its own copy.
+          bitmap.close?.();
+          dirty = true;
           if (key === "L0" && !heroShown) {
             heroShown = true;
             ready = true;
@@ -431,10 +429,7 @@ export function initJourney() {
       });
       root.classList.add("is-loaded");
       renderer.prepare?.(buildFrame(timeline.stateAt(0), 0).plates);
-      // Phones skip the background field: it is subtle and costs memory and battery.
-      if (!coarse) loop.ambient = initAmbient(document.querySelector("[data-ambient]"), keep);
-      loop.ambient?.setActive(!visible);
-      for (const bitmap of Object.values(keep)) bitmap.close?.();
+      dirty = true;
       if (status) status.textContent = "";
     } catch (error) {
       console.warn("[journey]", error);
@@ -468,15 +463,15 @@ export function initJourney() {
   window.addEventListener("portfolio:motionchange", (event) => {
     lenis.options.smoothWheel = !event.detail?.reduced;
     if (event.detail?.reduced) {
-      stopTour();
       goStatic("Reduced motion: the portfolio is shown without the camera journey.");
-      loop.ambient?.setActive(false);
     } else if (html.classList.contains("journey-static")) {
-      if (!context || !renderer) {
+      if (!(context || cpu) || !renderer) {
         location.reload();
         return;
       }
       html.classList.remove("journey-static");
+      // Fresh overlay state: the static page changed what the old cache remembers.
+      overlays = new Overlays(root);
       loop.journey = true;
       smoothScroll = null;
       measure();
@@ -486,7 +481,6 @@ export function initJourney() {
 
   new IntersectionObserver(([entry]) => {
     visible = entry.isIntersecting;
-    loop.ambient?.setActive(!visible);
   }, {rootMargin: "20% 0px"}).observe(root);
 
   let resizeTimer = 0;
@@ -515,15 +509,15 @@ export function initJourney() {
   requestAnimationFrame(frame);
   if (capture) {
     window.__journey = {
-      ready: () => ready && root.classList.contains("is-loaded"),
+      ready: () => ready && root.classList.contains("is-loaded") && (renderer?.warmed?.() ?? true),
       total: () => timeline.scrollTotal,
-      frame: (scroll, time = 10, velocity = 0) => {
+      frame: async (scroll, time = 10, velocity = 0) => {
         lenis.scrollTo(sectionTop + scroll * view.svh, {immediate: true, force: true});
         introStart = 0;
-        const state = renderAt(scroll, time, velocity);
+        const state = await renderAt(scroll, time, velocity);
         return {chapter: state.chapter, phase: state.phase, t: +state.t.toFixed(3)};
       },
     };
   }
-  return {lenis, startTour, getState: () => ({ready, tier: root.dataset.tier, renderScale, scroll: smoothScroll, total: timeline?.scrollTotal})};
+  return {lenis, getState: () => ({ready, tier: root.dataset.tier, renderScale, scroll: smoothScroll, total: timeline?.scrollTotal})};
 }

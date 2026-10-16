@@ -121,3 +121,16 @@ test("every manifest tier lists real files within the size budget", () => {
     assert.ok(total < 4.5 * 1048576, `${name} tier ${total} bytes`);
   }
 });
+
+test("the pupil geometry is the measured one: centred in the iris, slightly oval, opening concentric", () => {
+  // Measured on the registered iris plate (production-v3, scripts in the case study): centre,
+  // mean radius and a gentle oval R(θ) = R0·(1 + e·cos 2(θ − φ)).
+  const [e, phi] = plate.pupilShape;
+  assert.ok(e > 0 && e < 0.1, "a gentle oval, not a circle guessed by eye");
+  assert.ok(Math.abs(phi) <= Math.PI / 2);
+  assert.ok(plate.pupilRadius > 3.5 && plate.pupilRadius < 5.5);
+  assert.ok(plate.irisRadius > plate.pupilRadius * 3 && plate.irisRadius < plate.pupilRadius * 5.5);
+  // The iris plate takes over well before the pupil opens, so the opening is drawn on the plate it was measured on.
+  const iris = manifest.levels.L2;
+  assert.ok(Math.hypot(iris.center[0] - plate.pupil[0], iris.center[1] - plate.pupil[1]) < 3);
+});

@@ -51,8 +51,8 @@ test('Pages cache rules never join contradictory lifetimes, and mutable code rev
   const text=await readFile(path.join(website,'_headers'),'utf8'), rules=cacheRules(text);
   for (const route of [
     '/','/index.html','/resume','/resume.html','/404','/404.html',
-    '/app.js','/styles.css','/resume.css','/css/tokens.css','/css/journey.css','/css/sections.css',
-    '/js/sections.js','/js/journey/journey.js','/vendor/lenis.js',
+    '/app.js','/content.js','/skills.js','/styles.css','/catalog.css','/skills.css','/resume.css',
+    '/css/journey.css','/js/journey/journey.js','/vendor/lenis.js',
     '/robots.txt','/sitemap.xml','/assets/journey/manifest.json',
     '/assets/Vadla-Hemanth-Resume.pdf','/assets/social-preview.jpg',
   ]) {
@@ -65,7 +65,7 @@ test('Pages cache rules never join contradictory lifetimes, and mutable code rev
     assert.match(matching[0].value,/\bmust-revalidate\b/);
     assert.doesNotMatch(matching[0].value,/\bimmutable\b/);
   }
-  const immutable=[...Object.values(journey.tiers).flatMap(t=>Object.values(t).map(f=>f.src.slice(1))),'/fonts/HubotSans-VF.woff2','/fonts/MonaSans-VF.woff2'];
+  const immutable=Object.values(journey.tiers).flatMap(t=>Object.values(t).map(f=>f.src.slice(1)));
   for (const route of immutable) {
     const matching=rules.filter(rule=>rule.pattern.test(route));
     assert.equal(matching.length,1,`${route}: no blanket max-age=0 conflict`);
@@ -80,10 +80,10 @@ test('the release bypasses previously fresh four-hour script and style caches, i
     .map(match=>new URL(match[1],'https://portfolio.example/'));
   const entry=linked.find(url=>url.pathname==='/app.js'), version=entry?.searchParams.get('v');
   assert(version,'Entry module needs a versioned URL for upgrades from the initial cache policy');
-  for(const name of ['app.js','styles.css','css/tokens.css','css/journey.css','css/sections.css','js/sections.js']) {
+  for(const name of ['app.js','styles.css','css/journey.css','catalog.css','skills.css']) {
     assert.equal(linked.find(url=>url.pathname==='/'+name)?.searchParams.get('v'),version,`${name}: matching release version`);
   }
-  const modules=['app.js',...(await readdir(path.join(website,'js/journey'))).filter(f=>f.endsWith('.js')).map(f=>`js/journey/${f}`)];
+  const modules=['app.js','skills.js','content.js',...(await readdir(path.join(website,'js/journey'))).filter(f=>f.endsWith('.js')).map(f=>`js/journey/${f}`)];
   for(const name of modules) {
     const source=await readFile(path.join(website,name),'utf8');
     const imports=[...source.matchAll(/\bfrom\s*["']((?:\.\/|\.\.\/)[^"']+\.m?js(?:\?[^"']*)?)["']/g)];
@@ -94,12 +94,23 @@ test('the release bypasses previously fresh four-hour script and style caches, i
   }
 });
 
+// The CPU renderer and its worker load only on machines without WebGL (a dynamic import).
+const CPU_ONLY=new Set(['js/journey/renderer2d.js','js/journey/cpu-tunnel.js','js/journey/cpu-tunnel-worker.js']);
+
 test('critical text stays small', async () => {
   const journeyFiles=(await readdir(path.join(website,'js/journey'))).filter(f=>f.endsWith('.js')).map(f=>`js/journey/${f}`);
-  const files=['index.html','app.js','styles.css','css/tokens.css','css/journey.css','css/sections.css','js/sections.js','vendor/lenis.js',...journeyFiles];
+  const files=['index.html','app.js','content.js','skills.js','styles.css','css/journey.css','catalog.css','skills.css','vendor/lenis.js',...journeyFiles.filter(f=>!CPU_ONLY.has(f))];
   const payloads=await Promise.all(files.map(file=>readFile(path.join(website,file))));
   assert(payloads.reduce((sum,bytes)=>sum+bytes.length,0)<300*1024,'Critical text under 300 KiB uncompressed');
   assert(payloads.reduce((sum,bytes)=>sum+gzipSync(bytes).length,0)<90*1024,'Critical text under 90 KiB gzip-equivalent');
+});
+
+test('the CPU fallback loads only where WebGL is missing, and stays small', async () => {
+  const journey=await readFile(path.join(website,'js/journey/journey.js'),'utf8');
+  assert.doesNotMatch(journey,/^import[^;]*renderer2d\.js/m,'no static import of the CPU renderer');
+  assert.match(journey,/await import\("\.\/renderer2d\.js\?v=/,'loaded on demand, versioned');
+  const payloads=await Promise.all([...CPU_ONLY].map(file=>readFile(path.join(website,file))));
+  assert(payloads.reduce((sum,bytes)=>sum+gzipSync(bytes).length,0)<20*1024,'CPU renderer under 20 KiB gzip-equivalent');
 });
 
 test('performance artifacts and test tools stay outside the public build allowlist', async () => {

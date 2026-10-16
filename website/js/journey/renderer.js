@@ -1,6 +1,6 @@
 /** Draws one journey frame: scene (plates, tunnel, shards) → bloom → composite. */
-import {createProgram, createTexture, createTarget, deleteTarget, bindTarget, bindTexture} from "./gl.js?v=20261015-v3";
-import * as S from "./shaders.js?v=20261015-v3";
+import {createProgram, createTexture, createTarget, deleteTarget, bindTarget, bindTexture} from "./gl.js?v=20261016-v3b";
+import * as S from "./shaders.js?v=20261016-v3b";
 
 const BLOOM_LEVELS = 5;
 
@@ -142,6 +142,7 @@ export class JourneyRenderer {
       gl.uniform1f(u.uTexel2, p.texel2);
       gl.uniform1f(u.uHasL2, this.textures.L2 ? 1 : 0);
       gl.uniform1f(u.uPupilR, p.pupilRadius);
+      gl.uniform2f(u.uPupilShape, p.pupilShape[0], p.pupilShape[1]);
       gl.uniform1f(u.uIrisR, p.irisRadius);
       gl.uniform1f(u.uDilation, p.dilation);
       gl.uniform1f(u.uIrisFx, p.irisFx);
@@ -168,6 +169,7 @@ export class JourneyRenderer {
       gl.uniform1f(u.uCoreSize, t.coreSize);
       gl.uniform1f(u.uReveal, t.reveal);
       gl.uniform3f(u.uWindow, t.window[0], t.window[1], t.window[2]);
+      gl.uniform2f(u.uWindowShape, t.windowShape[0], t.windowShape[1]);
       gl.uniform1f(u.uTime, f.time);
       gl.uniform1f(u.uSpeed, f.speed);
       gl.uniform1f(u.uFlash, t.flash);

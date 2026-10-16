@@ -245,6 +245,16 @@ progress through the window (speed = cruise × (u/W)², position is the integral
 that), so it reaches cruise speed exactly as the pupil covers the screen. There is no black
 frame and no jump in speed. The pull-back runs the same path in reverse.
 
+Measure the aperture; never guess it. Fit its outline on the plate the camera sees
+when it opens: sample the brightness along a few hundred rays from a rough centre,
+take the steepest dark-to-light step on each ray, then fit a circle robustly
+(iterate, drop rays more than 2.5 MAD off, such as those crossing a catch-light) and
+add a second harmonic for a slight oval, R(θ) = R0·(1 + e·cos 2(θ − φ)). Convert the
+result to portrait coordinates through the plate's affine and draw the window, the
+dilation remap, the dark rim and the light ring from that one outline. Hemanth's
+first, eyeballed pupil was 1.9 portrait pixels off and 38% too large; at the moment
+the window opens that is about 30 screen pixels, and he saw it at once.
+
 Other ideas have other apertures: a lens, a doorway, a screen inside the scene, a
 hole in a page, the gap between two hands. Choose one that belongs to the concept.
 
@@ -356,10 +366,25 @@ lost WebGL context can be rebuilt.
 
 - Put a static poster of the opening in the HTML from the start; the canvas draws
   over it once it is ready.
-- Reduced motion (the system setting or a switch on the site), no WebGL2, a failed
-  manifest or image, and a context that cannot be restored all lead to the static
-  poster and the full portfolio, with a short status message for screen readers.
-  Never an indefinite loader.
+- Reduced motion (the system setting or a switch on the site), a failed manifest or
+  image, and a context that cannot be restored lead to the static poster and the full
+  portfolio, with a short status message for screen readers. Never an indefinite
+  loader.
+- No WebGL at all (machines without a GPU, blocklisted drivers) deserves the journey
+  too: Hemanth reviews his site on exactly such a machine. A Canvas 2D renderer can
+  draw the same frame description sharply if it spends pixels where they show:
+  - photographs at full resolution, from mip chains (never minify more than about
+    1.4× with bilinear filtering), and an exact pre-scaled copy of the resting
+    portrait blitted on whole pixels;
+  - the polar passage per pixel from a lookup table (depth, angle, fog, mip level),
+    with power-of-two mip-mapped textures, fixed-point depth and interpolation along
+    the depth axis, so near walls do not step and the far centre does not shimmer;
+  - worker threads drawing bands of rows (two gave about 1.8× on a busy 8-vCPU
+    machine; more did not help), the main thread pipelining the next request while it
+    composites the previous frame, and passage frames at an adaptive resolution;
+  - drawing only when something changed, and one more frame at full resolution when
+    the visitor pauses. Measure in a browser that is in the foreground: Chrome
+    throttles animation frames in tabs that are not visible.
 - Keep Skip links to the work. A guided tour can scroll at a constant rate, which
   reproduces the authored pace exactly (Hemanth: 0.44 viewport heights per second,
   with about 0.6 s ramps at each end). Any wheel, touch, pointer or key input stops
@@ -422,10 +447,11 @@ are enough to rebuild them.
 | `website/js/journey/timeline.js` | Scroll → state as pure functions: visual units, matched tunnel depth, chapter list, Gaussian-blended pace, framing per viewport |
 | `website/js/journey/shaders.js` | Eye-stack compositor with dilation remap and iris data lanes; polar tunnel with seam-free sampling, depth morph, end wall and signal comet; shards; bloom; composite with velocity blur, fringe, grain and dither |
 | `website/js/journey/renderer.js`, `gl.js` | WebGL2 passes, render targets, mipmapped anisotropic textures |
-| `website/js/journey/journey.js` | Lenis, stable viewport, loading order, adaptive render scale and eco mode, guided tour, context loss, capture mode |
+| `website/js/journey/journey.js` | Lenis, stable viewport, loading order, adaptive render scale and eco mode, context loss, capture mode; on the CPU path, draw-on-change and the still frame |
+| `website/js/journey/renderer2d.js`, `cpu-tunnel.js`, `cpu-tunnel-worker.js` | Canvas 2D renderer for machines without WebGL: mip-chained plates, lookup-table passage on worker threads, adaptive resolution (loaded only when needed) |
 | `website/js/journey/overlays.js` | DOM layers and card layout from the same state |
 | `website/js/journey/assets.js` | Tier choice and priority fetch with byte progress |
-| `website/tests/journey.test.mjs` | Journey length, pacing steps, continuity, framing, card layout, tiers and byte budget |
+| `website/tests/journey.test.mjs`, `cpu-tunnel.test.mjs` | Journey length, pacing steps, continuity, framing, measured pupil, card layout, tiers and byte budget; CPU passage mips, window outline and thread bands |
 | `production-v3/scripts/register.py`, `make_plates.py` | ECC registration and Lab low-frequency transfer (outside the repository) |
 | `production-v3/scripts/make_seamless.py`, `build_journey_assets.py` | Tileable textures; WebP tiers with hashed names and the manifest (outside the repository) |
 

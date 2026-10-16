@@ -35,6 +35,11 @@ float fbm(vec2 p) {
   return v;
 }
 float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+// Radius factor of an oval outline R(θ) = R0·(1 + e·cos 2(θ − φ)) in direction d (|d| = r);
+// shape = e·(cos 2φ, sin 2φ). Used for the pupil and the window that opens inside it.
+float outline(vec2 d, float r, vec2 shape) {
+  return 1.0 + (shape.x * (d.x * d.x - d.y * d.y) + shape.y * 2.0 * d.x * d.y) / max(r * r, 1e-8);
+}
 const vec3 SIGNAL = vec3(0.169, 0.482, 1.0);
 const vec3 SPARK = vec3(0.612, 0.776, 1.0);
 `;
@@ -68,6 +73,7 @@ uniform vec3 uC2;
 uniform float uTexel2;
 uniform float uHasL2;
 uniform float uPupilR;
+uniform vec2 uPupilShape;
 uniform float uIrisR;
 uniform float uDilation;
 uniform float uIrisFx;
@@ -79,9 +85,13 @@ uniform float uSweep;
 uniform float uShimmer;
 uniform vec4 uEdges;
 
+// Plates are sampled half a mip level sharper than the default: trilinear filtering
+// otherwise mixes in the next smaller level and softens the photograph.
+const float PLATE_BIAS = -0.5;
+
 vec3 sampleStack(vec2 P) {
   vec2 uv0 = P / uPlateSize;
-  vec3 col = texture(uL0, uv0).rgb;
+  vec3 col = texture(uL0, uv0, PLATE_BIAS).rgb;
   // Feather the plate into the black stage: toward its borders the near-black backdrop
   // is eased down to pure black (a natural vignette), so no rectangle edge ever shows.
   float edge = smoothstep(0.0, uEdges.x, uv0.x) * smoothstep(0.0, uEdges.y, 1.0 - uv0.x)
@@ -94,7 +104,7 @@ vec3 sampleStack(vec2 P) {
     float inside = step(0.0, uv1.x) * step(uv1.x, 1.0) * step(0.0, uv1.y) * step(uv1.y, 1.0);
     float when = smoothstep(0.45, 0.95, density / uTexel0);
     float where = 1.0 - smoothstep(uC1.z * 0.58, uC1.z * 0.94, length(P - uC1.xy));
-    col = mix(col, texture(uL1, uv1).rgb, inside * when * where);
+    col = mix(col, texture(uL1, uv1, PLATE_BIAS).rgb, inside * when * where);
   }
   if (uHasL1b > 0.5) {
     // The other eye gets the same treatment, so both stay equally sharp mid-zoom.
@@ -102,7 +112,7 @@ vec3 sampleStack(vec2 P) {
     float inside = step(0.0, uv1b.x) * step(uv1b.x, 1.0) * step(0.0, uv1b.y) * step(uv1b.y, 1.0);
     float when = smoothstep(0.45, 0.95, density / uTexel0);
     float where = 1.0 - smoothstep(uC1b.z * 0.58, uC1b.z * 0.94, length(P - uC1b.xy));
-    col = mix(col, texture(uL1b, uv1b).rgb, inside * when * where);
+    col = mix(col, texture(uL1b, uv1b, PLATE_BIAS).rgb, inside * when * where);
   }
   if (uHasL2 > 0.5) {
     vec2 uv2 = (uM2 * vec3(P, 1.0)).xy;
@@ -110,7 +120,7 @@ vec3 sampleStack(vec2 P) {
     float when = smoothstep(0.45, 0.95, density / uTexel1);
     // The iris plate takes over inside the iris; the dark limbal ring hides the seam.
     float where = 1.0 - smoothstep(uC2.z * 0.86, uC2.z, length(P - uC2.xy));
-    col = mix(col, texture(uL2, uv2).rgb, inside * when * where);
+    col = mix(col, texture(uL2, uv2, PLATE_BIAS).rgb, inside * when * where);
   }
   return col;
 }
@@ -120,11 +130,13 @@ void main() {
   vec2 P = uPupil + (css - uPupilScreen) / uSigma;
   vec2 d = P - uPupil;
   float r = length(d);
-  float rp = uPupilR * (1.0 + 0.55 * uDilation);
+  // The pupil's edge in this direction, as measured on the iris plate (it is slightly oval).
+  float rb = uPupilR * outline(d, r, uPupilShape);
+  float rp = rb * (1.0 + 0.55 * uDilation);
   // Dilate the pupil by remapping the iris radially (fibers stretch, nothing slides).
   vec2 Ps = P;
   if (r < uIrisR) {
-    float rs = r < rp ? r * uPupilR / rp : uPupilR + (r - rp) * (uIrisR - uPupilR) / (uIrisR - rp);
+    float rs = r < rp ? r * rb / rp : rb + (r - rp) * (uIrisR - rb) / (uIrisR - rp);
     Ps = uPupil + d * (rs / max(r, 1e-4));
   }
   vec3 col = sampleStack(Ps);
@@ -185,6 +197,7 @@ uniform float uCoreDist;
 uniform float uCoreSize;
 uniform float uReveal;
 uniform vec3 uWindow;
+uniform vec2 uWindowShape;
 uniform float uTime;
 uniform float uSpeed;
 uniform float uFlash;
@@ -290,8 +303,10 @@ void main() {
   }
 
   // Seen through the opening pupil first, then everywhere once the pupil fills the view.
-  float w = length(css - uWindow.xy);
-  float alpha = max(1.0 - smoothstep(uWindow.z * 0.9, uWindow.z * 0.995, w), uReveal);
+  vec2 wd = css - uWindow.xy;
+  float w = length(wd);
+  float edge = uWindow.z * outline(wd, w, uWindowShape);
+  float alpha = max(1.0 - smoothstep(edge * 0.9, edge * 0.995, w), uReveal);
   outColor = vec4(col * alpha, alpha);
 }`;
 

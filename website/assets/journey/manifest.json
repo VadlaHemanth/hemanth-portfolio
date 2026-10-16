@@ -8,16 +8,20 @@
    470
   ],
   "pupil": [
-   692,
-   437
+   691.8,
+   438.89
   ],
-  "pupilRadius": 6,
-  "irisRadius": 19,
+  "pupilRadius": 4.3,
+  "irisRadius": 18.5,
   "edges": [
    0.22,
    0.22,
    0.03,
    0.12
+  ],
+  "pupilShape": [
+   0.035,
+   0.1187
   ]
  },
  "levels": {

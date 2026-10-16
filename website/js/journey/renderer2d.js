@@ -1,9 +1,14 @@
 /**
- * CPU fallback for browsers without WebGL (no GPU, blocklisted drivers, hardened
- * browsers). It draws the same journey from the same frame description as the
- * WebGL renderer: the registered eye plates with canvas transforms, and the
- * neural/circuit passage as a lookup-table tunnel at low resolution, upscaled.
+ * CPU renderer for browsers without WebGL (no GPU, blocklisted drivers, hardened
+ * browsers). It draws the same journey from the same frame description as the WebGL
+ * renderer, as sharp as the machine allows:
+ *  - the portrait and eye plates at full resolution, from mip chains (and an exact
+ *    pre-scaled copy for the resting portrait), so the photograph stays crisp;
+ *  - the neural/circuit passage per pixel (cpu-tunnel.js), on worker threads when
+ *    available, at a resolution that adapts to the machine and sharpens to full
+ *    resolution whenever the visitor stops scrolling.
  */
+import {TEX_W, TEX_H, TunnelLut, makePyramid, frameConstants, outlineTable, shade} from "./cpu-tunnel.js?v=20261016-v3b";
 
 const TAU = Math.PI * 2;
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
@@ -11,6 +16,12 @@ const smooth = (a, b, v) => {
   const t = clamp((v - a) / (b - a));
   return t * t * (3 - 2 * t);
 };
+// Resolution steps for frames dominated by the passage (fraction of full resolution).
+const STEPS = [0.5, 0.6, 0.71, 0.85, 1];
+// The eye stays at full resolution while the opening pupil costs no more than a whole
+// passage frame would; past that share of the screen both use the passage resolution.
+const PHOTO_COVERAGE = 0.12;
+const BAND_MARGIN = 48;
 
 function makeCanvas(w, h) {
   if (typeof OffscreenCanvas === "function") return new OffscreenCanvas(w, h);
@@ -20,16 +31,19 @@ function makeCanvas(w, h) {
   return c;
 }
 
-/** Copy an ImageBitmap into a canvas (the caller frees the bitmap), optionally downscaled. */
+/** Copy an image into a canvas (the caller frees the source), optionally downscaled. */
 function copyImage(source, maxSide) {
   const s = Math.min(1, maxSide / Math.max(source.width, source.height));
-  const w = Math.max(1, Math.round(source.width * s));
-  const h = Math.max(1, Math.round(source.height * s));
-  const c = makeCanvas(w, h);
+  const c = makeCanvas(Math.max(1, Math.round(source.width * s)), Math.max(1, Math.round(source.height * s)));
   const ctx = c.getContext("2d");
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(source, 0, 0, w, h);
+  ctx.drawImage(source, 0, 0, c.width, c.height);
   return c;
+}
+
+/** The pupil's oval outline R(θ) = R0·(1 + e·cos 2(θ − φ)) from its shape vector e·(cos 2φ, sin 2φ). */
+function oval(shape) {
+  return {e: Math.hypot(shape[0], shape[1]), phi: Math.atan2(shape[1], shape[0]) / 2};
 }
 
 /** Extract the parts of a GLSL column-major mat3 affine: uv = M·P + t. */
@@ -37,14 +51,165 @@ function affineParts(m) {
   return {a: m[0], d: m[1], b: m[3], e: m[4], c: m[6], f: m[7]};
 }
 
+/** A plate (with its mask baked in) as a mip chain: level 0 is full size. */
+class Mipped {
+  constructor(canvas) {
+    this.levels = [canvas];
+    let last = canvas;
+    while (last.width > 320 && last.height > 320) {
+      const next = makeCanvas(Math.ceil(last.width / 2), Math.ceil(last.height / 2));
+      const ctx = next.getContext("2d");
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(last, 0, 0, next.width, next.height);
+      this.levels.push(next);
+      last = next;
+    }
+  }
+
+  get width() {
+    return this.levels[0].width;
+  }
+
+  /** The level whose pixels land closest to one canvas pixel at this draw scale. */
+  pick(scale) {
+    const level = clamp(Math.round(Math.log2(1 / Math.max(scale, 1e-6))), 0, this.levels.length - 1);
+    return this.levels[level];
+  }
+}
+
+/** Worker threads that each draw a band of the passage's rows. */
+class TunnelPool {
+  constructor(count, url) {
+    this.workers = [];
+    this.ready = new Map();
+    this.waiting = null;
+    this.free = [];
+    for (let i = 0; i < count; i++) {
+      this.free.push([]);
+      try {
+        const worker = new Worker(url, {type: "module"});
+        worker.onmessage = (event) => this.receive(i, event.data);
+        worker.onerror = () => {
+          this.broken = true;
+        };
+        this.workers.push(worker);
+      } catch {
+        break;
+      }
+    }
+    this.broken = this.workers.length === 0;
+  }
+
+  get size() {
+    return this.workers.length;
+  }
+
+  setTextures(textures) {
+    for (const worker of this.workers) worker.postMessage({type: "textures", ...textures});
+  }
+
+  bands(height) {
+    const n = this.workers.length;
+    return this.workers.map((_, j) => [Math.round((height * j) / n), Math.round((height * (j + 1)) / n)]);
+  }
+
+  /** Ask every worker to prepare its band of a lookup table (built between frames). */
+  prepare(key, spec) {
+    if (this.ready.has(key)) return;
+    this.ready.set(key, 0);
+    this.bands(spec.height).forEach(([y0, y1], j) => {
+      this.workers[j].postMessage({type: "lut", key, spec: {...spec, y0: Math.max(0, y0 - BAND_MARGIN),
+        y1: Math.min(spec.height, y1 + BAND_MARGIN)}});
+    });
+  }
+
+  isReady(key) {
+    return this.ready.get(key) === this.workers.length;
+  }
+
+  forget(key) {
+    if (!this.ready.has(key)) return;
+    this.ready.delete(key);
+    for (const worker of this.workers) worker.postMessage({type: "drop", key});
+  }
+
+  receive(index, m) {
+    if (m.type === "lut") {
+      if (this.ready.has(m.key)) this.ready.set(m.key, this.ready.get(m.key) + 1);
+      return;
+    }
+    const job = this.waiting;
+    if (!job || m.id !== job.id) {
+      this.free[index].push(m.buffer);
+      return;
+    }
+    if (m.missing) {
+      job.missing = true;
+      this.free[index].push(m.buffer);
+    } else job.bands.push({...m, worker: index});
+    if (--job.left === 0) {
+      this.waiting = null;
+      if (job.missing) this.release(job.bands);
+      job.resolve(job.missing ? null : job.bands);
+    }
+  }
+
+  /** Return drawn bands' buffers for reuse. */
+  release(bands) {
+    for (const band of bands || []) if (band.worker !== undefined) this.free[band.worker].push(band.buffer);
+  }
+
+  /** Draw a region of the passage; resolves with the bands, or null if a table is missing. */
+  draw(key, height, region, request) {
+    const [rx0, ry0, rx1, ry1] = region;
+    const id = (this.serial = (this.serial || 0) + 1);
+    return new Promise((resolve) => {
+      const job = {id, left: 0, bands: [], resolve};
+      this.bands(height).forEach(([y0, y1], j) => {
+        const a = Math.max(ry0, y0);
+        const b = Math.min(ry1, y1);
+        if (b <= a) return;
+        const bytes = (rx1 - rx0) * (b - a) * 4;
+        const free = this.free[j];
+        let buffer = free.pop();
+        if (!buffer || buffer.byteLength < bytes) buffer = new ArrayBuffer(Math.max(bytes, buffer?.byteLength || 0));
+        free.length = Math.min(free.length, 2);
+        job.left++;
+        this.workers[j].postMessage({type: "frame", id, key, ...request, rx0, ry0: a, rx1, ry1: b, buffer}, [buffer]);
+      });
+      if (!job.left) resolve([]);
+      else this.waiting = job;
+    });
+  }
+
+  dispose() {
+    for (const worker of this.workers) worker.terminate();
+    this.workers = [];
+  }
+}
+
 export class CpuRenderer {
-  constructor(ctx) {
+  constructor(ctx, {workers = 2} = {}) {
     this.ctx = ctx;
+    this.canvas = ctx.canvas;
     this.cpu = true;
     this.images = {};
+    this.plates = {};
     this.textures = {};
-    this.baked = {};
-    this.lutKey = "";
+    this.mainLuts = new Map();
+    this.seq = 0;
+    this.drawnSeq = 0;
+    this.inFlight = false;
+    this.latest = null;
+    this.pool = null;
+    if (workers > 0 && typeof Worker === "function") {
+      this.pool = new TunnelPool(workers, new URL("./cpu-tunnel-worker.js?v=20261016-v3b", import.meta.url));
+      if (this.pool.broken) this.pool = null;
+    }
+    // Start sharp with two threads, lighter with fewer; adapt from measured frame times.
+    this.step = this.pool ? (this.pool.size >= 2 ? 2 : 1) : 0;
+    this.cost = 0;
+    this.costFrames = 0;
     this.noise = new Float32Array(256 * 64);
     let s = 7;
     for (let i = 0; i < this.noise.length; i++) {
@@ -61,41 +226,105 @@ export class CpuRenderer {
       this.shards.push({ang: r() * TAU, speed: 0.35 + 1.55 * r() ** 1.6, delay: r() * 0.25, size: 0.7 + 2.5 * r() ** 2,
         card: pick < 0.24 ? 1 : pick < 0.36 ? 0 : pick < 0.48 ? 2 : -1, along: r(), lag: r(), hue: r()});
     }
+    this.viewport = [1, 1];
+    this.dpr = 1;
+  }
+
+  get tunnelScale() {
+    return STEPS[this.step];
   }
 
   setTexture(key, bitmap) {
     if (key === "neural" || key === "circuit") {
-      // Small pixel arrays for per-pixel sampling.
-      const c = copyImage(bitmap, 512);
-      const data = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
-      this.textures[key] = {w: c.width, h: c.height, data};
+      // Power-of-two, mip-mapped texels for the per-pixel passage.
+      const c = makeCanvas(TEX_W, TEX_H);
+      const x = c.getContext("2d", {willReadFrequently: true});
+      x.imageSmoothingQuality = "high";
+      x.drawImage(bitmap, 0, 0, TEX_W, TEX_H);
+      const pyramid = makePyramid(x.getImageData(0, 0, TEX_W, TEX_H).data, key === "circuit" ? 1.25 : 1);
+      this.pool?.setTextures({[key]: pyramid});
+      this.textures[key] = this.pool ? true : pyramid;
       if (key === "circuit") this.images.circuit = copyImage(bitmap, 1024);
       return;
     }
-    const maxSide = key === "L0" ? 1600 : key === "core" ? 768 : 1254;
+    const maxSide = key === "L0" ? 2800 : key === "core" ? 768 : 2048;
     this.images[key] = copyImage(bitmap, maxSide);
-    delete this.baked[key];
+    delete this.plates[key];
   }
 
-  resize(width, height) {
-    this.width = width;
-    this.height = height;
+  /** CSS viewport and device pixel ratio; the backing store follows the frame being drawn. */
+  setViewport(width, height, dpr) {
+    this.viewport = [width, height];
+    this.dpr = dpr;
+    this.heroCopy = null;
+    for (const key of [...this.mainLuts.keys()]) this.mainLuts.delete(key);
   }
 
-  /** Masked copies of the plates, made once: feathered portrait edges and soft-edged eye/iris plates. */
-  bake(key, p) {
-    if (this.baked[key]) return this.baked[key];
-    const img = this.images[key];
-    if (!img) return null;
-    const c = makeCanvas(img.width, img.height);
+  resize() {}
+
+  canvasSize(scale) {
+    return [Math.max(1, Math.round(this.viewport[0] * this.dpr * scale)), Math.max(1, Math.round(this.viewport[1] * this.dpr * scale))];
+  }
+
+  applyScale(scale) {
+    const [w, h] = this.canvasSize(scale);
+    if (this.canvas.width !== w || this.canvas.height !== h) {
+      this.canvas.width = w;
+      this.canvas.height = h;
+    }
+    this.width = w;
+    this.height = h;
+  }
+
+  /** The passage's lookup table for a scale: centred where the camera comes to rest. */
+  lutSpec(scale, center) {
+    const [w, h] = this.canvasSize(scale);
+    const k = w / this.viewport[0];
+    const spec = {width: w, height: h, cx: center[0] * k, cy: center[1] * k, hm: center[2] * k};
+    return {key: `${w}x${h}|${spec.cx.toFixed(2)},${spec.cy.toFixed(2)}|${spec.hm.toFixed(3)}`, spec};
+  }
+
+  /** Prepare tables for the sharp (still) size and the current moving size ahead of need. */
+  warm(center) {
+    this.center = center;
+    for (const scale of new Set([this.tunnelScale, 1])) {
+      const {key, spec} = this.lutSpec(scale, center);
+      if (this.pool) this.pool.prepare(key, spec);
+      else if (!this.mainLuts.has(key)) this.mainLuts.set(key, new TunnelLut(spec));
+    }
+    if (!this.pool) this.buildMainLuts();
+  }
+
+  buildMainLuts() {
+    clearTimeout(this.lutTimer);
+    const pending = [...this.mainLuts.values()].find((lut) => !lut.done);
+    if (!pending) return;
+    pending.build(performance.now() + 8);
+    this.lutTimer = setTimeout(() => this.buildMainLuts(), 0);
+  }
+
+  /** True once the tables for the current sizes are built (capture mode waits for this). */
+  warmed() {
+    if (!this.center) return false;
+    return [this.tunnelScale, 1].every((scale) => this.lutReady(this.lutSpec(scale, this.center).key));
+  }
+
+  lutReady(key) {
+    return this.pool ? this.pool.isReady(key) : !!this.mainLuts.get(key)?.done;
+  }
+
+  /** Masked plates with mip chains, made once while the visitor is still on the hero. */
+  plate(key, p) {
+    if (this.plates[key]) return this.plates[key];
+    const c = this.images[key];
+    if (!c) return null;
     const ctx = c.getContext("2d");
-    ctx.drawImage(img, 0, 0);
     ctx.globalCompositeOperation = "destination-in";
     if (key === "L0") {
-      // "destination-in" acts on the whole canvas, so each edge ramp spans the full image.
+      // Feather the portrait into the black stage; each ramp spans the whole image.
       const [l, r, t, b] = p.edges;
-      const W = img.width;
-      const H = img.height;
+      const W = c.width;
+      const H = c.height;
       const ramp = (x0, y0, x1, y1, band) => {
         const g = ctx.createLinearGradient(x0, y0, x1, y1);
         for (let i = 0; i <= 8; i++) {
@@ -113,22 +342,26 @@ export class CpuRenderer {
       const level = {L1: [p.m1, p.c1, [0.58, 0.94]], L1b: [p.m1b, p.c1b, [0.58, 0.94]], L2: [p.m2, p.c2, [0.86, 1]]}[key];
       const {a, b, c: tx, d, e, f: ty} = affineParts(level[0]);
       const [cx, cy, radius] = level[1];
-      const n = img.width;
+      const n = c.width;
       const px = (a * cx + b * cy + tx) * n;
       const py = (d * cx + e * cy + ty) * n;
       const scale = Math.hypot(a, d) * n;
-      const inner = radius * level[2][0] * scale;
-      const outer = radius * level[2][1] * scale;
-      const g = ctx.createRadialGradient(px, py, inner, px, py, outer);
+      const g = ctx.createRadialGradient(px, py, radius * level[2][0] * scale, px, py, radius * level[2][1] * scale);
       for (let i = 0; i <= 8; i++) {
         const u = i / 8;
         g.addColorStop(u, `rgba(0,0,0,${1 - u * u * (3 - 2 * u)})`);
       }
       ctx.fillStyle = g;
-      ctx.fillRect(0, 0, img.width, img.height);
+      ctx.fillRect(0, 0, c.width, c.height);
     }
-    this.baked[key] = c;
-    return c;
+    ctx.globalCompositeOperation = "source-over";
+    this.plates[key] = new Mipped(c);
+    delete this.images[key];
+    return this.plates[key];
+  }
+
+  prepare(p) {
+    for (const key of ["L0", "L1", "L1b", "L2"]) this.plate(key, p);
   }
 
   /** Canvas transform for a plate whose pixels map to the portrait by uv = M·P + t. */
@@ -145,16 +378,49 @@ export class CpuRenderer {
     return [k * s * ia, k * s * id, k * s * ib, k * s * ie, k * tx, k * ty];
   }
 
-  /** Bake every mask while the visitor is still on the hero, so scrolling never waits. */
-  prepare(p) {
-    for (const key of ["L0", "L1", "L1b", "L2"]) if (this.images[key]) this.bake(key, p);
+  /** Draw one level of a mip chain under a transform given for its full-size level. */
+  drawMipped(mipped, t) {
+    const scale = Math.hypot(t[0], t[1]);
+    const img = mipped.pick(scale);
+    const q = mipped.width / img.width;
+    this.ctx.setTransform(t[0] * q, t[1] * q, t[2] * q, t[3] * q, t[4], t[5]);
+    this.ctx.drawImage(img, 0, 0);
+  }
+
+  /** The resting portrait: an exact pre-scaled copy blitted on whole pixels is as sharp as it gets. */
+  drawPortrait(L0, t) {
+    const scale = t[0];
+    const hero = this.heroCopy;
+    if (hero && hero.source === L0 && Math.abs(scale / hero.scale - 1) < 0.004) {
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.ctx.drawImage(hero.canvas, Math.round(t[4]), Math.round(t[5]));
+      return;
+    }
+    this.drawMipped(L0, t);
+  }
+
+  /** Make the exact copy of the portrait for the hero framing (once per viewport size). */
+  makeHeroCopy(p, k) {
+    const L0 = this.plate("L0", p);
+    if (!L0) return;
+    const scale = (k * p.sigma) / (L0.width / p.plateSize[0]);
+    if (this.heroCopy && this.heroCopy.source === L0 && Math.abs(scale / this.heroCopy.scale - 1) < 0.004) return;
+    const src = L0.levels[0];
+    const w = Math.max(1, Math.round(L0.width * scale));
+    const h = Math.max(1, Math.round(L0.levels[0].height * scale));
+    const canvas = makeCanvas(w, h);
+    const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(src, 0, 0, w, h);
+    this.heroCopy = {source: L0, scale, canvas};
   }
 
   drawPlates(f, k) {
     const ctx = this.ctx;
     const p = f.plates;
-    const L0 = this.bake("L0", p);
+    const L0 = this.plate("L0", p);
     if (!L0) return;
+    if (Math.abs(p.zoomLog) < 1e-6) this.makeHeroCopy(p, k);
     // The screen's corners in portrait coordinates decide which layers are needed at all.
     const [vw, vh] = f.viewport;
     const corners = [[0, 0], [vw, 0], [0, vh], [vw, vh]].map(([x, y]) => [
@@ -169,50 +435,61 @@ export class CpuRenderer {
     };
     const density = p.sigma * k;
     const layers = [["L1", p.m1, p.c1, p.texel0, 0.58], ["L1b", p.m1b, p.c1b, p.texel0, 0.58], ["L2", p.m2, p.c2, p.texel1, 0.86]]
-      .map(([key, m, c, texel, inner]) => ({key, m, c, inner, when: this.images[key] ? smooth(0.45, 0.95, density / texel) : 0}))
+      .map(([key, m, c, texel, inner]) => ({key, m, c, inner, when: this.plate(key, p) ? smooth(0.45, 0.95, density / texel) : 0}))
       .filter((l) => l.when > 0.001 && visible(l.c));
     // Skip any layer that a fully opaque layer above it already covers.
     const top = [...layers].reverse().find((l) => l.when >= 0.999 && covers(l.c, l.inner));
     const start = top ? layers.indexOf(top) : -1;
-    ctx.imageSmoothingQuality = density / (L0.width / p.plateSize[0]) > 1 ? "low" : "medium";
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "low";
     if (start < 0) {
-      const s0 = L0.width / p.plateSize[0];
-      ctx.setTransform(k * p.sigma / s0, 0, 0, k * p.sigma / s0,
-        k * (p.pupilScreen[0] - p.sigma * p.pupil[0]), k * (p.pupilScreen[1] - p.sigma * p.pupil[1]));
-      ctx.drawImage(L0, 0, 0);
+      const s = (k * p.sigma) / (L0.width / p.plateSize[0]);
+      this.drawPortrait(L0, [s, 0, 0, s, k * (p.pupilScreen[0] - p.sigma * p.pupil[0]), k * (p.pupilScreen[1] - p.sigma * p.pupil[1])]);
     }
     for (const layer of layers.slice(Math.max(0, start))) {
-      const img = this.bake(layer.key, p);
+      const mipped = this.plate(layer.key, p);
       ctx.globalAlpha = layers.indexOf(layer) === start ? 1 : layer.when;
-      ctx.setTransform(...this.plateTransform(layer.m, img.width, p, k));
-      ctx.drawImage(img, 0, 0);
+      this.drawMipped(mipped, this.plateTransform(layer.m, mipped.width, p, k));
     }
     ctx.globalAlpha = 1;
     ctx.setTransform(k, 0, 0, k, 0, 0);
     // The pupil opens into the portal; a ring of light marks where the iris meets it.
+    // Both follow the pupil's measured, slightly oval outline, drawn in its own frame.
     const [qx, qy] = p.pupilScreen;
+    const {e, phi} = oval(p.pupilShape);
     const rp = p.pupilRadius * (1 + 0.55 * p.dilation) * p.sigma;
     const ri = p.irisRadius * p.sigma;
-    if (p.dilation > 0.05) {
-      const g = ctx.createRadialGradient(qx, qy, rp * 0.97, qx, qy, rp * 1.05);
-      g.addColorStop(0, `rgba(0,0,0,${smooth(0.05, 0.35, p.dilation)})`);
-      g.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(qx, qy, rp * 1.05, 0, TAU);
-      ctx.fill();
+    if (p.dilation > 0.05 || p.irisFx > 0.01) {
+      ctx.save();
+      ctx.translate(qx, qy);
+      ctx.rotate(phi);
+      ctx.scale(1 + e, 1 - e);
+      if (p.dilation > 0.05) {
+        const g = ctx.createRadialGradient(0, 0, rp * 0.985, 0, 0, rp * 1.04);
+        g.addColorStop(0, `rgba(0,0,0,${smooth(0.05, 0.35, p.dilation)})`);
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(0, 0, rp * 1.04, 0, TAU);
+        ctx.fill();
+      }
+      if (p.irisFx > 0.01) {
+        ctx.globalCompositeOperation = "lighter";
+        const ring = ctx.createRadialGradient(0, 0, rp * 0.92, 0, 0, rp * 1.35);
+        ring.addColorStop(0, "rgba(43,123,255,0)");
+        ring.addColorStop(0.22, `rgba(43,123,255,${0.75 * p.irisFx})`);
+        ring.addColorStop(1, "rgba(43,123,255,0)");
+        ctx.fillStyle = ring;
+        ctx.beginPath();
+        ctx.arc(0, 0, rp * 1.35, 0, TAU);
+        ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
+      }
+      ctx.restore();
     }
     if (p.irisFx > 0.01) {
-      ctx.globalCompositeOperation = "lighter";
-      const ring = ctx.createRadialGradient(qx, qy, rp * 0.92, qx, qy, rp * 1.35);
-      ring.addColorStop(0, "rgba(43,123,255,0)");
-      ring.addColorStop(0.22, `rgba(43,123,255,${0.75 * p.irisFx})`);
-      ring.addColorStop(1, "rgba(43,123,255,0)");
-      ctx.fillStyle = ring;
-      ctx.beginPath();
-      ctx.arc(qx, qy, rp * 1.35, 0, TAU);
-      ctx.fill();
       // Data packets running along the iris fibers toward the pupil.
+      ctx.globalCompositeOperation = "lighter";
       ctx.strokeStyle = `rgba(156,198,255,${0.55 * p.irisFx})`;
       ctx.lineWidth = Math.max(1, ri * 0.012);
       ctx.beginPath();
@@ -220,9 +497,10 @@ export class CpuRenderer {
         const h = this.noise[i * 37];
         if (h < 1 - p.irisFx * 0.6) continue;
         const ang = (i / 96) * TAU + h * 0.05;
+        const edge = rp * (1 + e * Math.cos(2 * (ang - phi)));
         const phase = 1 - ((f.flow * (0.7 + h) + f.time * (0.12 + 0.22 * h) + h * 9) % 1);
-        const r0 = rp + (ri - rp) * phase;
-        const r1 = Math.max(rp, r0 - (ri - rp) * 0.12);
+        const r0 = edge + (ri - edge) * phase;
+        const r1 = Math.max(edge, r0 - (ri - edge) * 0.12);
         ctx.moveTo(qx + Math.cos(ang) * r0, qy + Math.sin(ang) * r0);
         ctx.lineTo(qx + Math.cos(ang) * r1, qy + Math.sin(ang) * r1);
       }
@@ -236,134 +514,7 @@ export class CpuRenderer {
     }
   }
 
-  /** Per-pixel lookups that only change with the viewport. */
-  buildLut(f) {
-    const [cw, ch] = f.viewport;
-    // The centre moves slightly while the pupil settles; quantise it so the table is rarely rebuilt.
-    const qx = Math.round(f.frameCenter[0] / 6) * 6;
-    const qy = Math.round(f.frameCenter[1] / 6) * 6;
-    const key = `${cw}x${ch}:${qx},${qy}:${f.halfMin}`;
-    if (key === this.lutKey) return;
-    this.lutKey = key;
-    this.lutCenter = [qx, qy];
-    const area = 72000;
-    const tw = Math.max(64, Math.round(Math.sqrt(area * (cw / ch))));
-    const th = Math.max(48, Math.round(tw * (ch / cw)));
-    this.tw = tw;
-    this.th = th;
-    this.tunnelCanvas = makeCanvas(tw, th);
-    this.tunnelCtx = this.tunnelCanvas.getContext("2d");
-    this.tunnelImage = this.tunnelCtx.createImageData(tw, th);
-    this.tunnelPixels = new Uint32Array(this.tunnelImage.data.buffer);
-    const n = tw * th;
-    this.lutInv = new Float32Array(n);
-    this.lutFog = new Float32Array(n);
-    this.lutA = new Float32Array(n);
-    for (let y = 0; y < th; y++) {
-      for (let x = 0; x < tw; x++) {
-        const i = y * tw + x;
-        const cssX = ((x + 0.5) / tw) * cw;
-        const cssY = ((y + 0.5) / th) * ch;
-        const px = (cssX - qx) / f.halfMin;
-        const py = -(cssY - qy) / f.halfMin;
-        const rho = Math.max(Math.hypot(px, py), 0.016);
-        this.lutA[i] = Math.atan2(py, px) / TAU + 0.5;
-        this.lutInv[i] = 1 / rho;
-        this.lutFog[i] = Math.exp(-Math.max(1 / rho - 0.35, 0) * 0.21);
-      }
-    }
-    this.columnsFor = {};
-  }
-
-  /** Texture columns per pixel for a texture width and repeat count (fixed per viewport). */
-  columns(texW, repeat) {
-    const key = `${texW}:${repeat}`;
-    if (this.columnsFor[key]) return this.columnsFor[key];
-    const a = this.lutA;
-    const col = new Int32Array(a.length);
-    for (let i = 0; i < a.length; i++) {
-      const u = a[i] * repeat;
-      col[i] = ((u - Math.floor(u)) * texW) | 0;
-    }
-    return (this.columnsFor[key] = col);
-  }
-
-  drawTunnel(f) {
-    const t = f.tunnel;
-    const neural = this.textures.neural;
-    const circuit = this.textures.circuit;
-    if (!neural) return null;
-    this.buildLut(f);
-    // While the camera barely moves (reading the cards), reuse the last tunnel frame.
-    const sig = `${this.lutKey}|${t.morph.toFixed(3)}`;
-    if (sig === this.lastTunnelSig && Math.abs(t.z - this.lastTunnelZ) < 0.004) return this.tunnelCanvas;
-    this.lastTunnelSig = sig;
-    this.lastTunnelZ = t.z;
-    const out = this.tunnelPixels;
-    const n = out.length;
-    const inv = this.lutInv;
-    const fog = this.lutFog;
-    const noise = this.noise;
-    const z = t.z;
-    const morph = t.morph;
-    const front = z + 15 + (-1.2 - 15) * smooth(0, 1, morph);
-    const chamber = t.chamberDepth;
-    const nearChamber = z > chamber - 30;
-    const useN = morph < 0.999;
-    const useC = morph > 0.001 && circuit;
-    const nPix = useN ? new Uint32Array(neural.data.buffer) : null;
-    const cPix = useC ? new Uint32Array(circuit.data.buffer) : null;
-    const nCol = useN ? this.columns(neural.w, 3) : null;
-    const cCol = useC ? this.columns(circuit.w, 5) : null;
-    const nh = neural.h;
-    const nw = neural.w;
-    const chh = useC ? circuit.h : 1;
-    const cw = useC ? circuit.w : 1;
-    const zn = (z / 3.2) * nh;
-    const zc = (z / 1.25) * chh;
-    const kn = nh / 3.2;
-    const kc = chh / 1.25;
-    const boost = 1 + 0.25 * morph;
-    const big = 1e6;
-    for (let i = 0; i < n; i++) {
-      const d = inv[i];
-      let c = 0;
-      if (useN) {
-        const y = ((zn + d * kn + big * nh) | 0) % nh;
-        c = nPix[y * nw + nCol[i]];
-      }
-      let r = c & 255;
-      let g = (c >> 8) & 255;
-      let b = (c >> 16) & 255;
-      if (useC) {
-        let m = 1;
-        if (morph < 0.999) {
-          const x = z + d - front + (noise[(i * 7) & 16383] - 0.5) * 2.2;
-          m = x <= -1.1 ? 0 : x >= 1.1 ? 1 : ((x + 1.1) / 2.2) * ((x + 1.1) / 2.2) * (3 - 2 * ((x + 1.1) / 2.2));
-        }
-        if (m > 0) {
-          const y = ((zc + d * kc + big * chh) | 0) % chh;
-          const cc = cPix[y * cw + cCol[i]];
-          r += ((cc & 255) - r) * m;
-          g += (((cc >> 8) & 255) - g) * m;
-          b += (((cc >> 16) & 255) - b) * m;
-        }
-      }
-      let shade = fog[i] * boost;
-      if (nearChamber) {
-        const x = (z + d - (chamber - 1.1)) / 1.25;
-        if (x > 0) shade *= x >= 1 ? 0 : 1 - x * x * (3 - 2 * x);
-      }
-      r *= shade;
-      g *= shade;
-      b *= shade;
-      out[i] = 0xff000000 | ((b > 255 ? 255 : b) << 16) | ((g > 255 ? 255 : g) << 8) | (r > 255 ? 255 : r);
-    }
-    this.tunnelCtx.putImageData(this.tunnelImage, 0, 0);
-    return this.tunnelCanvas;
-  }
-
-  drawTunnelLights(f, k) {
+  drawTunnelLights(f) {
     const ctx = this.ctx;
     const t = f.tunnel;
     const [cx, cy] = f.frameCenter;
@@ -494,71 +645,213 @@ export class CpuRenderer {
     ctx.globalCompositeOperation = "source-over";
   }
 
-  vignette(f, k) {
+  /** What this frame needs: its resolution, whether the passage shows, and where. */
+  plan(f) {
     const [w, h] = f.viewport;
-    const key = `${w}x${h}`;
-    if (this.vignetteKey !== key) {
-      this.vignetteKey = key;
-      const c = makeCanvas(Math.max(2, Math.round(w / 4)), Math.max(2, Math.round(h / 4)));
-      const ctx = c.getContext("2d");
-      const g = ctx.createRadialGradient(c.width / 2, c.height / 2, Math.min(c.width, c.height) * 0.25,
-        c.width / 2, c.height / 2, Math.hypot(c.width, c.height) * 0.62);
-      g.addColorStop(0, "rgba(0,0,0,0)");
-      g.addColorStop(1, "rgba(0,0,0,0.6)");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, c.width, c.height);
-      this.vignetteCanvas = c;
+    const t = f.tunnel;
+    let tunnel = false;
+    let full = false;
+    let coverage = 0;
+    if (t) {
+      const [wx, wy, r] = t.window;
+      const {e} = oval(t.windowShape);
+      const far = Math.max(Math.hypot(wx, wy), Math.hypot(w - wx, wy), Math.hypot(wx, h - wy), Math.hypot(w - wx, h - wy));
+      full = t.reveal >= 0.999 || r * (1 - e) * 0.9 >= far;
+      tunnel = full || r > 0.5 || t.reveal > 0.001;
+      coverage = full ? 1 : Math.min(1, (Math.PI * r * r) / (w * h));
     }
-    this.ctx.drawImage(this.vignetteCanvas, 0, 0, w, h);
+    const photo = !!f.plates && coverage < Math.max(PHOTO_COVERAGE, this.tunnelScale ** 2);
+    let scale = f.still || photo || !tunnel ? 1 : this.tunnelScale;
+    // Never wait on a table: fall back to whichever size is ready.
+    if (tunnel && this.center) {
+      if (!this.lutReady(this.lutSpec(scale, this.center).key)) {
+        const other = scale === 1 ? this.tunnelScale : 1;
+        if (this.lutReady(this.lutSpec(other, this.center).key)) scale = other;
+      }
+    }
+    return {tunnel, full, scale, plates: !!f.plates && !full};
   }
 
   render(f) {
+    const seq = ++this.seq;
+    const plan = this.plan(f);
+    if (!plan.tunnel || !this.textures.neural || !this.center) {
+      this.compose(f, plan, null);
+      this.drawnSeq = seq;
+      f.after?.();
+      return;
+    }
+    const job = this.job(f, plan);
+    if (!job) {
+      this.compose(f, plan, null);
+      this.drawnSeq = seq;
+      f.after?.();
+      return;
+    }
+    if (!this.pool) {
+      const lut = this.mainLuts.get(job.key);
+      const [rx0, ry0, rx1, ry1] = job.region;
+      const n = (rx1 - rx0) * (ry1 - ry0);
+      if (!this.mainOut || this.mainOut.length < n) this.mainOut = new Uint32Array(n);
+      const out = this.mainOut.subarray(0, n);
+      const win = job.request.win ? {radius: job.request.win.radius, table: outlineTable(job.request.win.shape)} : null;
+      const start = performance.now();
+      shade(out, lut, job.request.k, this.textures.neural, this.textures.circuit || this.textures.neural,
+        rx0, ry0, rx1, ry1, job.request.ox, job.request.oy, win);
+      this.measure(performance.now() - start, plan);
+      this.compose(f, plan, [{buffer: out.buffer, rx0, ry0, rx1, ry1}]);
+      this.drawnSeq = seq;
+      f.after?.();
+      return;
+    }
+    if (this.inFlight) {
+      // The workers are busy: the newest frame goes next, older ones are skipped.
+      this.latest = {f, plan, job, seq};
+      return;
+    }
+    this.dispatch(f, plan, job, seq);
+  }
+
+  /** The passage request for a frame: its table, region, offset and window. */
+  job(f, plan) {
+    const {key} = this.lutSpec(plan.scale, this.center);
+    if (!this.lutReady(key)) return null;
+    const [w, h] = this.canvasSize(plan.scale);
+    const k = w / f.viewport[0];
+    const t = f.tunnel;
+    // The table is centred where the camera comes to rest; the opening pupil may sit a little off it.
+    const ox = Math.round((f.frameCenter[0] - this.center[0]) * k);
+    const oy = Math.round((f.frameCenter[1] - this.center[1]) * k);
+    let region = [0, 0, w, h];
+    let win = null;
+    if (!plan.full) {
+      const {e} = oval(t.windowShape);
+      const r = t.window[2] * k;
+      const cx = t.window[0] * k;
+      const cy = t.window[1] * k;
+      const ext = r * (1 + e) + 2;
+      region = [Math.max(0, Math.floor(cx - ext)), Math.max(0, Math.floor(cy - ext)), Math.min(w, Math.ceil(cx + ext)), Math.min(h, Math.ceil(cy + ext))];
+      if (region[2] <= region[0] || region[3] <= region[1]) return null;
+      win = {radius: r, shape: t.windowShape};
+    }
+    return {key, height: h, region, request: {ox, oy, win, k: frameConstants(t)}};
+  }
+
+  dispatch(f, plan, job, seq) {
+    this.inFlight = true;
+    const start = performance.now();
+    this.pool.draw(job.key, job.height, job.region, job.request).then((bands) => {
+      this.inFlight = false;
+      if (bands) this.measure(performance.now() - start, plan);
+      const next = this.latest;
+      this.latest = null;
+      // Keep the workers busy with the newest frame while this one is drawn.
+      if (next) this.dispatch(next.f, next.plan, next.job, next.seq);
+      if (!bands || seq < this.drawnSeq) {
+        this.pool.release(bands);
+        return;
+      }
+      this.compose(f, plan, bands);
+      this.pool.release(bands);
+      this.drawnSeq = seq;
+      f.after?.();
+    });
+  }
+
+  /** Adapt the moving resolution of passage frames to what this machine sustains. */
+  measure(ms, plan) {
+    if (!plan.full || plan.scale !== this.tunnelScale) return;
+    this.cost += (ms - this.cost) * 0.15;
+    if (++this.costFrames < 40) return;
+    let step = this.step;
+    if (this.cost > 26 && step > 0) step--;
+    else if (this.cost < 11 && step < STEPS.length - 1) step++;
+    if (step === this.step) return;
+    this.costFrames = 0;
+    const previous = this.lutSpec(this.tunnelScale, this.center).key;
+    this.step = step;
+    this.warm(this.center);
+    if (previous !== this.lutSpec(1, this.center).key) {
+      // Drop the old moving size once the new one is ready.
+      const drop = () => (this.lutReady(this.lutSpec(this.tunnelScale, this.center).key) ? this.pool?.forget(previous) : setTimeout(drop, 250));
+      setTimeout(drop, 250);
+    }
+  }
+
+  compose(f, plan, bands) {
     const ctx = this.ctx;
+    const stats = (window.__journeyStats ||= {});
+    const t0 = performance.now();
+    this.applyScale(plan.scale);
     const k = this.width / f.viewport[0];
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, this.width, this.height);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "medium";
-    if (f.plates) this.drawPlates(f, k);
-    ctx.setTransform(k, 0, 0, k, 0, 0);
-    if (f.tunnel) {
-      const tunnel = this.drawTunnel(f);
-      if (tunnel) {
-        const [w, h] = f.viewport;
-        const win = f.tunnel.window;
-        const full = f.tunnel.reveal >= 0.999 || win[2] > Math.hypot(w, h);
-        ctx.save();
-        ctx.imageSmoothingQuality = "low";
-        if (!full) {
-          ctx.beginPath();
-          ctx.arc(win[0], win[1], Math.max(0, win[2] * 0.97), 0, TAU);
-          ctx.clip();
+    if (!bands || !plan.full) {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, this.width, this.height);
+    }
+    if (plan.plates && f.plates) this.drawPlates(f, k);
+    const t1 = performance.now();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (bands && bands.length) {
+      if (plan.full) {
+        for (const b of bands) {
+          const w = b.rx1 - b.rx0;
+          const h = b.ry1 - b.ry0;
+          ctx.putImageData(new ImageData(new Uint8ClampedArray(b.buffer, 0, w * h * 4), w, h), b.rx0, b.ry0);
         }
-        // Window mode: the passage's vanishing point sits in the pupil.
-        const ox = f.frameCenter[0] - this.lutCenter[0];
-        const oy = f.frameCenter[1] - this.lutCenter[1];
-        ctx.drawImage(tunnel, ox, oy, w, h);
-        ctx.restore();
-        if (full || f.tunnel.reveal > 0) this.drawTunnelLights(f, k);
-        else {
-          ctx.save();
-          ctx.beginPath();
-          ctx.arc(win[0], win[1], Math.max(0, win[2] * 0.97), 0, TAU);
-          ctx.clip();
-          this.drawTunnelLights(f, k);
-          ctx.restore();
+      } else {
+        // The opening pupil: blend the passage over the eye through a layer, edge alpha intact.
+        const x0 = Math.min(...bands.map((b) => b.rx0));
+        const y0 = Math.min(...bands.map((b) => b.ry0));
+        const x1 = Math.max(...bands.map((b) => b.rx1));
+        const y1 = Math.max(...bands.map((b) => b.ry1));
+        if (!this.layer || this.layer.width < x1 - x0 || this.layer.height < y1 - y0) {
+          this.layer = makeCanvas(Math.max(x1 - x0, this.layer?.width || 0), Math.max(y1 - y0, this.layer?.height || 0));
+          this.layerCtx = this.layer.getContext("2d");
         }
+        for (const b of bands) {
+          const w = b.rx1 - b.rx0;
+          const h = b.ry1 - b.ry0;
+          this.layerCtx.putImageData(new ImageData(new Uint8ClampedArray(b.buffer, 0, w * h * 4), w, h), b.rx0 - x0, b.ry0 - y0);
+        }
+        ctx.drawImage(this.layer, 0, 0, x1 - x0, y1 - y0, x0, y0, x1 - x0, y1 - y0);
       }
     }
+    if (f.tunnel && plan.tunnel) {
+      ctx.setTransform(k, 0, 0, k, 0, 0);
+      if (plan.full) this.drawTunnelLights(f);
+      else {
+        const {e, phi} = oval(f.tunnel.windowShape);
+        const [wx, wy, wr] = f.tunnel.window;
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(wx, wy, wr * 0.995 * (1 + e), wr * 0.995 * (1 - e), phi, 0, TAU);
+        ctx.clip();
+        this.drawTunnelLights(f);
+        ctx.restore();
+      }
+    }
+    ctx.setTransform(k, 0, 0, k, 0, 0);
     if (f.shards) this.drawShards(f);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const t2 = performance.now();
+    const kind = !plan.tunnel ? "photo" : plan.full ? "passage" : "window";
+    const entry = (stats[kind] ||= {n: 0, plates: 0, rest: 0, max: 0, scale: 0});
+    entry.n++;
+    entry.plates += t1 - t0;
+    entry.rest += t2 - t1;
+    entry.max = Math.max(entry.max, t2 - t0);
+    entry.scale = plan.scale;
+    if (bands) stats.workerMs = this.cost;
   }
 
   dispose() {
+    this.pool?.dispose();
     this.images = {};
+    this.plates = {};
     this.textures = {};
-    this.baked = {};
+    this.mainLuts.clear();
   }
 }
