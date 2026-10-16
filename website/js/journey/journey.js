@@ -118,7 +118,8 @@ export function initJourney() {
     if (cpu) {
       dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       renderer?.setViewport(view.width, view.lvh, dpr);
-      if (plate) renderer?.warm([view.width / 2, view.svh / 2, Math.min(view.width, view.svh) / 2]);
+      // Tables for the new size replace the old ones (built or still queued).
+      if (plate) renderer?.warm([view.width / 2, view.svh / 2, Math.min(view.width, view.svh) / 2], {retain: true});
       dirty = true;
       return;
     }

@@ -12,6 +12,8 @@ const queue = [];
 let building = false;
 
 function buildSlice() {
+  // Tables for sizes that were dropped meanwhile are not worth finishing.
+  while (queue.length && !luts.has(queue[0].key)) queue.shift();
   const lut = queue[0];
   if (!lut) {
     building = false;
@@ -45,6 +47,8 @@ self.onmessage = ({data: m}) => {
     }
   } else if (m.type === "drop") {
     luts.delete(m.key);
+  } else if (m.type === "retain") {
+    for (const key of [...luts.keys()]) if (!m.keys.includes(key)) luts.delete(key);
   } else if (m.type === "frame") {
     const lut = luts.get(m.key);
     const out = new Uint32Array(m.buffer);

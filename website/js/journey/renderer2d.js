@@ -127,6 +127,12 @@ class TunnelPool {
     return this.ready.get(key) === this.workers.length;
   }
 
+  /** Keep only these tables (after a resize, the old sizes are dropped, built or not). */
+  retain(keys) {
+    for (const key of [...this.ready.keys()]) if (!keys.includes(key)) this.ready.delete(key);
+    for (const worker of this.workers) worker.postMessage({type: "retain", keys});
+  }
+
   forget(key) {
     if (!this.ready.has(key)) return;
     this.ready.delete(key);
@@ -257,7 +263,6 @@ export class CpuRenderer {
     this.viewport = [width, height];
     this.dpr = dpr;
     this.heroCopy = null;
-    for (const key of [...this.mainLuts.keys()]) this.mainLuts.delete(key);
   }
 
   resize() {}
@@ -285,12 +290,18 @@ export class CpuRenderer {
   }
 
   /** Prepare tables for the sharp (still) size and the current moving size ahead of need. */
-  warm(center) {
+  warm(center, {retain = false} = {}) {
     this.center = center;
+    const keys = [];
     for (const scale of new Set([this.tunnelScale, 1])) {
       const {key, spec} = this.lutSpec(scale, center);
+      keys.push(key);
       if (this.pool) this.pool.prepare(key, spec);
       else if (!this.mainLuts.has(key)) this.mainLuts.set(key, new TunnelLut(spec));
+    }
+    if (retain) {
+      this.pool?.retain(keys);
+      for (const key of [...this.mainLuts.keys()]) if (!keys.includes(key)) this.mainLuts.delete(key);
     }
     if (!this.pool) this.buildMainLuts();
   }
