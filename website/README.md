@@ -102,6 +102,11 @@ visible lower edge (`position: fixed`), so they follow the toolbar as it moves. 
 without the small/large units (before Safari 15.4 and Chrome 108) fall back to `100vh`
 and a measured height.
 
+The page is short until the journey knows its length, so `journey.js` places the visitor
+itself once it does: a reload comes back to the same point (the browser's own scroll
+restoration is turned off), and a link to a section such as `/#work` lands on it without
+the loading screen.
+
 ## Media
 
 `assets/journey/manifest.json` lists three tiers (high, mid, low) of WebP plates and

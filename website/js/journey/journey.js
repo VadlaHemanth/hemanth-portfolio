@@ -130,8 +130,34 @@ export function initJourney() {
   let headerBottom = 0;
   let copyTop = 0;
   let tour = null;
-  // "Skip" pressed before the journey knew its length: land on the work again once it does.
-  let workIntent = false;
+  // Where to land once the journey knows its length (until then the page is too short): a link
+  // to a section (#work), the place a reload left, or "Skip" pressed while it loaded. The
+  // browser's own restoration would land before the page has its height, so it is done here.
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+  const RESTORE_KEY = "vh:scroll";
+  let pending = null;
+  const linked = location.hash.length > 1 ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
+  if (linked && !root.contains(linked)) {
+    // The browser would jump there before the journey has its length; it is done once it does,
+    // and the address keeps its #section.
+    pending = {element: linked, hash: location.hash};
+    history.replaceState(history.state, "", location.pathname + location.search);
+  }
+  else if (["reload", "back_forward"].includes(performance.getEntriesByType?.("navigation")?.[0]?.type)) {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(RESTORE_KEY) || "null");
+      if (saved?.path === location.pathname && saved.y > 0 && saved.journey > 0) pending = saved;
+    } catch {
+      // Storage may be unavailable (private modes); the page then opens at the top.
+    }
+  }
+  window.addEventListener("pagehide", () => {
+    try {
+      sessionStorage.setItem(RESTORE_KEY, JSON.stringify({path: location.pathname, y: Math.round(window.scrollY), journey: root.offsetHeight}));
+    } catch {
+      // As above.
+    }
+  });
 
   /** Top of the opening copy within the frame (layout position: no transforms). */
   function measureCopyTop() {
@@ -158,18 +184,21 @@ export function initJourney() {
     copyTop = measureCopyTop();
     if (plate) {
       timeline = createTimeline(view.width, view.svh, plate, {top: headerBottom, copyTop});
-      // A visitor already past the journey (skipped while it loaded, or a restored position)
-      // keeps reading the same place while the journey's length changes above them.
-      const before = root.offsetHeight;
-      const past = root.getBoundingClientRect().bottom <= 1;
       root.style.height = `${Math.round(timeline.scrollTotal * view.svh + view.lvh)}px`;
-      const grown = root.offsetHeight - before;
-      if (workIntent) {
-        workIntent = false;
-        skipToWork();
-      } else if (past && grown) {
+      if (pending) {
+        const p = pending;
+        pending = null;
         lenis.resize();
-        lenis.scrollTo(window.scrollY + grown, {immediate: true, force: true});
+        if (p.skip) skipToWork();
+        else if (p.element) {
+          lenis.scrollTo(p.element, {immediate: true, force: true});
+          history.replaceState(history.state, "", location.pathname + location.search + p.hash);
+        }
+        else {
+          // The same point of the journey, or the same place in the sections after it.
+          const h = root.offsetHeight;
+          lenis.scrollTo(p.y < p.journey ? (p.y * h) / p.journey : h + p.y - p.journey, {immediate: true, force: true});
+        }
       }
     }
     sectionTop = root.getBoundingClientRect().top + window.scrollY;
@@ -450,7 +479,7 @@ export function initJourney() {
   // until SOFT_WAIT after the page opened (the rest keeps arriving, shown along the header), and
   // never past HARD_WAIT, when its CSS fallback also lets go.
   function startLoader() {
-    if (!loader || capture || getComputedStyle(loader).display === "none" || getComputedStyle(loader).visibility === "hidden") {
+    if (!loader || capture || pending?.element || getComputedStyle(loader).display === "none" || getComputedStyle(loader).visibility === "hidden") {
       finishLoader();
       return;
     }
@@ -498,7 +527,7 @@ export function initJourney() {
     stopTour();
     const work = document.getElementById("work");
     if (!work) return;
-    if (!timeline) workIntent = true;
+    if (!timeline) pending = {skip: true};
     // The page may have just grown (the journey sized itself): scroll with fresh limits.
     lenis.resize();
     lenis.scrollTo(work, {immediate: true, force: true});
@@ -566,7 +595,7 @@ export function initJourney() {
     window.addEventListener(type, (event) => {
       if (type === "pointerdown" && event.target.closest?.("[data-guide], [data-skip], [data-loader-skip]")) return;
       // The visitor's own scrolling overrides a pending skip.
-      if (type === "wheel" || type === "touchstart" || /^(Arrow|Page|Home|End| )/.test(event.key || "")) workIntent = false;
+      if (type === "wheel" || type === "touchstart" || /^(Arrow|Page|Home|End| )/.test(event.key || "")) pending = null;
       stopTour();
     }, {passive: true});
   }
