@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {createTimeline, heroFraming, zoomCamera, CHAMBER_DEPTH, CORE_DEPTH, EYE_PACE} from "../js/journey/timeline.js";
+import {createTimeline, heroFraming, zoomCamera, CHAMBER_DEPTH, CORE_DEPTH, EYE_PACE, GUIDE_DIVE} from "../js/journey/timeline.js";
 import {layoutCards, CARD_ORDER} from "../js/journey/overlays.js";
 import {chooseTier} from "../js/journey/assets.js";
 
@@ -167,7 +167,7 @@ test("the guided play-through can move at one uniform camera speed (visual posit
   }
 });
 
-test("the camera dives into the eye at the same pace it pulls back out, scrolling and guided", () => {
+test("scrolling, the camera dives into the eye at the pace it pulls back out; the guide dives in 45% quicker", () => {
   for (const [w, h] of [...VIEWPORTS, [2220, 952]]) {
     const tl = createTimeline(w, h, plate, {top: 88});
     const dive = tl.chapters.find((c) => c.phase === "forward" && c.id === "zoom");
@@ -181,7 +181,8 @@ test("the camera dives into the eye at the same pace it pulls back out, scrollin
       const vIn = dive.start + x * dive.len;
       const vOut = back.start + back.len - x * back.len;
       assert.ok(Math.abs(scrollPace(vIn) / scrollPace(vOut) - 1) < 0.02, `${w}x${h} at ${x.toFixed(2)}: scroll pace in/out`);
-      assert.ok(Math.abs(guidePace(vIn) / guidePace(vOut) - 1) < 0.02, `${w}x${h} at ${x.toFixed(2)}: guided pace in/out`);
+      assert.ok(Math.abs(guidePace(vIn) / guidePace(vOut) - GUIDE_DIVE) < 0.02, `${w}x${h} at ${x.toFixed(2)}: guided dive vs pull-back`);
+      assert.ok(Math.abs(guidePace(vOut) - EYE_PACE) < 0.02, `${w}x${h} at ${x.toFixed(2)}: the guided pull-back keeps the eye's pace`);
       assert.ok(Math.abs(scrollPace(vIn) / passage - EYE_PACE) < 0.02, `${w}x${h}: the eye moves at EYE_PACE`);
     }
     // The dive starts at that pace: the first scroll already moves the face.

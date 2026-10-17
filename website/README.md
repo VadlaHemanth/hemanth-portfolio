@@ -33,9 +33,10 @@ journey runs forward and backward at the same pace instead of scrubbing a video.
 - `js/journey/timeline.js` maps scroll to one perceived camera speed. Zooms advance
   in log-scale, tunnel flight is converted into the same units, and the few
   deliberate pace changes (the eye, reading the projects, the rewind) are blended so the
-  speed never jumps. The camera dives into the eye and pulls back out of it at one pace
-  (`EYE_PACE`), a little quicker than the passage, in scrolling and in the guided
-  play-through alike. The journey is about seven screens of scroll on every device.
+  speed never jumps. Scrolling, the camera dives into the eye and pulls back out of it at
+  one pace (`EYE_PACE`), a little quicker than the passage; the guided play-through dives
+  in 45% quicker still (`GUIDE_DIVE`). The journey is about seven screens of scroll on
+  every device.
 - `js/journey/shaders.js` and `renderer.js` draw it with WebGL2: the eye stack
   (portrait → eye → iris → pupil), the neural passage and circuit as a polar tunnel
   with tileable textures, the processor burst as particles, then bloom, a light
@@ -49,8 +50,8 @@ journey runs forward and backward at the same pace instead of scrubbing a video.
   photograph itself, framed exactly like the previous site's hero and always clear of the
   header. It is the page's poster, so it is downloaded once, and it cross-fades into the
   plates as the dive begins; the finishing effects (glow, grain, vignette) stay off it.
-- "Explore my work" plays the whole journey at one steady pace and stops on the closing
-  portrait, as the previous site's film did; any wheel, touch or key hands control back.
+- "Explore my work" plays the whole journey at one steady pace (the dive into the eye
+  quicker) and stops on the closing portrait, as the previous site's film did; any wheel, touch or key hands control back.
   "Skip to work" goes straight to the work.
 - The opening pupil becomes a window into the neural passage, so there is no black
   gap between the eye and the tunnel. The window, the dilation and the dark rim all

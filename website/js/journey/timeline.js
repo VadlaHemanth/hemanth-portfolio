@@ -61,6 +61,8 @@ const THOUGHT_WINDOW = 0.075;
  * It holds from the face through the opening pupil, both ways, in scrolling and in the guide.
  */
 export const EYE_PACE = 1.4;
+/** "Explore my work" dives into the eye quicker still (its pull-back keeps the eye's pace). */
+export const GUIDE_DIVE = 1.45;
 
 /**
  * Where the portrait sits for a viewport, in CSS pixels.
@@ -129,7 +131,8 @@ export function zoomCamera(zoomLog, width, height, plate, length, top = 0, copyT
 
 function chapterList(zoomLen) {
   // phase: forward → show → twist → settle. speed is visual units per unit of base scroll.
-  // guide: the guided play-through's pace relative to its base speed (the eye matches scrolling).
+  // guide: the guided play-through's pace relative to its base speed (the eye as in scrolling,
+  // the dive into it quicker still).
   const forward = [
     {id: "zoom", len: zoomLen, speed: EYE_PACE},
     {id: "portal", len: PORTAL, speed: EYE_PACE},
@@ -149,7 +152,8 @@ function chapterList(zoomLen) {
   const twist = forward.slice().reverse().map((c) => ({...c, phase: "twist", speed: twistSpeed[c.id]}));
   const settle = [{id: "settle", len: 0.75, speed: 0.6, phase: "settle"}];
   const eye = new Set(["zoom", "portal"]);
-  return [...forward, ...show, ...twist, ...settle].map((c) => ({...c, guide: eye.has(c.id) ? EYE_PACE : 1}));
+  const guide = (c) => (!eye.has(c.id) ? 1 : c.phase === "forward" ? EYE_PACE * GUIDE_DIVE : EYE_PACE);
+  return [...forward, ...show, ...twist, ...settle].map((c) => ({...c, guide: guide(c)}));
 }
 
 /**
