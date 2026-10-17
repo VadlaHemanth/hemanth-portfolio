@@ -8,7 +8,7 @@
  *    available, at a resolution that adapts to the machine and sharpens to full
  *    resolution whenever the visitor stops scrolling.
  */
-import {TEX_W, TEX_H, TunnelLut, makePyramid, frameConstants, outlineTable, shade} from "./cpu-tunnel.js?v=20261016-v3b";
+import {TEX_W, TEX_H, TunnelLut, makePyramid, frameConstants, outlineTable, shade} from "./cpu-tunnel.js?v=20261017-v3c";
 
 const TAU = Math.PI * 2;
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
@@ -209,7 +209,7 @@ export class CpuRenderer {
     this.latest = null;
     this.pool = null;
     if (workers > 0 && typeof Worker === "function") {
-      this.pool = new TunnelPool(workers, new URL("./cpu-tunnel-worker.js?v=20261016-v3b", import.meta.url));
+      this.pool = new TunnelPool(workers, new URL("./cpu-tunnel-worker.js?v=20261017-v3c", import.meta.url));
       if (this.pool.broken) this.pool = null;
     }
     // Start sharp with two threads, lighter with fewer; adapt from measured frame times.

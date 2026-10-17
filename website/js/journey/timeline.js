@@ -56,21 +56,19 @@ export const THOUGHTS = Object.freeze([
 const THOUGHT_WINDOW = 0.075;
 
 /**
- * The dive into the eye: quicker while the face and the eye grow (the eye's broad, smooth
- * surfaces read slower on screen than the passage), easing back to the common pace as the
- * pupil opens, so the opening and everything after it keep their timing.
+ * The eye: the camera dives in and pulls back out at one pace, a little quicker than the
+ * passage (the eye's broad, smooth surfaces read slower on screen than the passage does).
+ * It holds from the face through the opening pupil, both ways, in scrolling and in the guide.
  */
-export const DIVE_PACE = 1.45;
-export function divePace(t) {
-  return 1 + (DIVE_PACE - 1) * (1 - smoothstep(0.5, 0.78, t));
-}
+export const EYE_PACE = 1.4;
 
 /**
  * Where the portrait sits for a viewport, in CSS pixels.
- * plate: {width, height, face:[x,y], pupil:[x,y], pupilRadius, irisRadius, hero?, hairTop?}
+ * plate: {width, height, face:[x,y], pupil:[x,y], pupilRadius, irisRadius, hero?, hairTop?, lip?}
  * top: the bottom of the fixed header; the crown of the hair always stays clear of it.
+ * copyTop: on portrait screens, the top of the opening copy below the face (0: unknown).
  */
-export function heroFraming(width, height, plate, top = 0) {
+export function heroFraming(width, height, plate, top = 0, copyTop = 0) {
   const aspect = width / height;
   const wide = plate.hero?.wide;
   let sigma, faceX, faceY;
@@ -97,21 +95,31 @@ export function heroFraming(width, height, plate, top = 0) {
     const crown = faceY + (plate.hairTop - plate.face[1]) * sigma;
     const clear = top + Math.max(12, height * 0.025);
     if (crown < clear) faceY += clear - crown;
+    const limit = copyTop - Math.max(12, height * 0.02);
+    if (aspect < 1.12 && copyTop > 0 && plate.lip != null && faceY + (plate.lip - plate.face[1]) * sigma > limit) {
+      // Shorter phones: the copy would cover the face, so the photo gets smaller, hair just under
+      // the header. It keeps the mouth clear while the photo still fills the screen's width, and
+      // the eyes always.
+      const fit = (y) => (limit - clear) / (y - plate.hairTop);
+      const eyes = fit(plate.pupil[1] + plate.irisRadius);
+      sigma = Math.min(sigma, Math.max(fit(plate.lip), Math.min(width / plate.width, eyes)));
+      faceY = clear + (plate.face[1] - plate.hairTop) * sigma;
+    }
   }
   const pupil = [faceX + (plate.pupil[0] - plate.face[0]) * sigma, faceY + (plate.pupil[1] - plate.face[1]) * sigma];
   return {sigma, pupil, face: [faceX, faceY]};
 }
 
 /** Visual length of the dive from the hero framing until the dilated pupil covers the screen. */
-export function zoomLength(width, height, plate, dilation = 1.55, top = 0) {
+export function zoomLength(width, height, plate, dilation = 1.55, top = 0, copyTop = 0) {
   const halfDiagonal = Math.hypot(width, height) / 2;
   const sigmaEnd = halfDiagonal * 1.04 / (plate.pupilRadius * dilation);
-  return Math.log(sigmaEnd / heroFraming(width, height, plate, top).sigma);
+  return Math.log(sigmaEnd / heroFraming(width, height, plate, top, copyTop).sigma);
 }
 
 /** The zoom camera: scale and on-screen pupil position for a log-zoom value. */
-export function zoomCamera(zoomLog, width, height, plate, length, top = 0) {
-  const hero = heroFraming(width, height, plate, top);
+export function zoomCamera(zoomLog, width, height, plate, length, top = 0, copyTop = 0) {
+  const hero = heroFraming(width, height, plate, top, copyTop);
   const sigma = hero.sigma * Math.exp(zoomLog);
   // The pupil glides to the centre early in the dive, while the eye is still small.
   const glide = smoothstep(0, 0.72, zoomLog / length);
@@ -119,19 +127,16 @@ export function zoomCamera(zoomLog, width, height, plate, length, top = 0) {
   return {sigma, pupil};
 }
 
-function diveFactor(chapter, v) {
-  return chapter.phase === "forward" && chapter.id === "zoom" ? divePace((v - chapter.start) / chapter.len) : 1;
-}
-
 function chapterList(zoomLen) {
   // phase: forward → show → twist → settle. speed is visual units per unit of base scroll.
+  // guide: the guided play-through's pace relative to its base speed (the eye matches scrolling).
   const forward = [
-    {id: "zoom", len: zoomLen},
-    {id: "portal", len: PORTAL},
-    {id: "mind", len: MIND},
-    {id: "break", len: BREAK},
-    {id: "machine", len: MACHINE},
-  ].map((c) => ({...c, phase: "forward", speed: 1}));
+    {id: "zoom", len: zoomLen, speed: EYE_PACE},
+    {id: "portal", len: PORTAL, speed: EYE_PACE},
+    {id: "mind", len: MIND, speed: 1},
+    {id: "break", len: BREAK, speed: 1},
+    {id: "machine", len: MACHINE, speed: 1},
+  ].map((c) => ({...c, phase: "forward"}));
   const show = [
     {id: "burst", len: 1.6, speed: 1},
     {id: "assemble", len: 1.25, speed: 1},
@@ -140,18 +145,19 @@ function chapterList(zoomLen) {
     {id: "release", len: 0.9, speed: 0.85},
     {id: "collapse", len: 1.15, speed: 1.15},
   ].map((c) => ({...c, phase: "show"}));
-  const twistSpeed = {machine: 2.1, break: 3.1, mind: 3.1, portal: 2.2, zoom: 1.4};
+  const twistSpeed = {machine: 2.1, break: 3.1, mind: 3.1, portal: 2.2, zoom: EYE_PACE};
   const twist = forward.slice().reverse().map((c) => ({...c, phase: "twist", speed: twistSpeed[c.id]}));
   const settle = [{id: "settle", len: 0.75, speed: 0.6, phase: "settle"}];
-  return [...forward, ...show, ...twist, ...settle];
+  const eye = new Set(["zoom", "portal"]);
+  return [...forward, ...show, ...twist, ...settle].map((c) => ({...c, guide: eye.has(c.id) ? EYE_PACE : 1}));
 }
 
 /**
  * Build the journey for a viewport. Returns its scroll length (in viewport
  * heights) and stateAt(scrollViewportHeights) → camera and overlay state.
  */
-export function createTimeline(width, height, plate, {top = 0} = {}) {
-  const zoomLen = zoomLength(width, height, plate, 1.55, top);
+export function createTimeline(width, height, plate, {top = 0, copyTop = 0} = {}) {
+  const zoomLen = zoomLength(width, height, plate, 1.55, top, copyTop);
   const chapters = chapterList(zoomLen);
   let cursor = 0;
   for (const c of chapters) {
@@ -164,14 +170,16 @@ export function createTimeline(width, height, plate, {top = 0} = {}) {
   const N = 4096;
   const dv = visualTotal / (N - 1);
   const raw = new Float64Array(N);
+  const rawGuide = new Float64Array(N);
   let k = 0;
   for (let i = 0; i < N; i++) {
     const v = i * dv;
     while (k < chapters.length - 1 && v >= chapters[k].start + chapters[k].len) k++;
-    raw[i] = chapters[k].speed * diveFactor(chapters[k], v);
+    raw[i] = chapters[k].speed;
+    rawGuide[i] = chapters[k].guide;
   }
   // Ease out of the final settle so the camera arrives at rest on the portrait.
-  const settle = chapters.at(-1);
+  const settle = chapters[chapters.length - 1];
   for (let i = 0; i < N; i++) {
     const v = i * dv;
     if (v > settle.start) raw[i] *= lerp(1, 0.22, smoothstep(settle.start, visualTotal, v));
@@ -185,15 +193,20 @@ export function createTimeline(width, height, plate, {top = 0} = {}) {
     kernel.push(w);
     kernelSum += w;
   }
-  const pace = new Float64Array(N);
-  for (let i = 0; i < N; i++) {
-    let acc = 0;
-    for (let j = -radius; j <= radius; j++) {
-      // Harmonic blending keeps scroll time additive across a pace change.
-      acc += kernel[j + radius] / raw[Math.min(N - 1, Math.max(0, i + j))];
+  function blend(values) {
+    const out = new Float64Array(N);
+    for (let i = 0; i < N; i++) {
+      let acc = 0;
+      for (let j = -radius; j <= radius; j++) {
+        // Harmonic blending keeps scroll time additive across a pace change.
+        acc += kernel[j + radius] / values[Math.min(N - 1, Math.max(0, i + j))];
+      }
+      out[i] = kernelSum / acc;
     }
-    pace[i] = kernelSum / acc;
+    return out;
   }
+  const pace = blend(raw);
+  const guidePace = blend(rawGuide);
   // Integrate scroll distance s(v).
   const scrollAt = new Float64Array(N);
   for (let i = 1; i < N; i++) {
@@ -214,12 +227,10 @@ export function createTimeline(width, height, plate, {top = 0} = {}) {
     return (lo + (span > 0 ? (s - scrollAt[lo]) / span : 0)) * dv;
   }
 
-  // Guide time (in visual units at the guide's base speed): uniform, with the same quicker dive.
+  // Guide time (in visual units at the guide's base speed): uniform, the eye at the eye's pace.
   const guideAt = new Float64Array(N);
   for (let i = 1; i < N; i++) {
-    const v = (i - 0.5) * dv;
-    const chapter = chapters.find((c) => v < c.start + c.len) || chapters.at(-1);
-    guideAt[i] = guideAt[i - 1] + dv / diveFactor(chapter, v);
+    guideAt[i] = guideAt[i - 1] + dv * 2 / (guidePace[i - 1] + guidePace[i]);
   }
   /** Guide time of a visual position, and its inverse. */
   function guideTimeAt(visual) {
@@ -247,10 +258,11 @@ export function createTimeline(width, height, plate, {top = 0} = {}) {
     return scrollAt[i] + (scrollAt[i + 1] - scrollAt[i]) * (x - i);
   }
 
-  const ctx = {width, height, plate, top, zoomLen, showProgress: 0};
+  const ctx = {width, height, plate, top, copyTop, zoomLen, showProgress: 0};
 
   const showStart = chapters.find((c) => c.phase === "show").start;
-  const showEnd = chapters.filter((c) => c.phase === "show").at(-1);
+  const shows = chapters.filter((c) => c.phase === "show");
+  const showEnd = shows[shows.length - 1];
   const showLen = showEnd.start + showEnd.len - showStart;
 
   function stateAt(scroll) {
@@ -298,10 +310,10 @@ function baseState() {
 
 /** Forward-path state for the travelling chapters, shared by the dive and the pull-back. */
 function travel(id, t, ctx, s) {
-  const {zoomLen, plate, width, height, top} = ctx;
+  const {zoomLen, plate, width, height, top, copyTop} = ctx;
   if (id === "zoom") {
     s.zoomLog = t * zoomLen;
-    const sigma = heroFraming(width, height, plate, top).sigma * Math.exp(s.zoomLog);
+    const sigma = heroFraming(width, height, plate, top, copyTop).sigma * Math.exp(s.zoomLog);
     const iris = plate.irisRadius * sigma / (Math.min(width, height) / 2);
     s.irisFx = smoothstep(0.32, 1.35, iris);
     s.dilation = smoothstep(0.5, 2.2, iris);

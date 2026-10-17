@@ -85,10 +85,19 @@ class StaticChecks(unittest.TestCase):
         self.assertIn("Scroll down to begin", self.html)
         self.assertIn("Swipe up to begin", self.html)
         self.assertIn("data-journey-stage", self.html)
-        # No film or loader dialog. As on the previous site, "Explore my work" plays the journey
-        # (a guided scroll, still a plain link to the work without JavaScript) and the other
-        # ways past the opening go straight to the work.
-        self.assertNotIn("experience-loader", self.ids)
+        # The previous site's loading screen: a labelled dialog with real progress and a way past
+        # it. Hidden without JavaScript, and it lets go by itself if the scripts never arrive.
+        loader = self.ids["experience-loader"][1]
+        self.assertEqual((loader.get("role"), loader.get("aria-modal"), loader.get("aria-labelledby")), ("dialog", "true", "loader-title"))
+        self.assertIn("A thought.<br>A world within.", self.html)
+        bar = next(attrs for _, attrs in self.nodes if "data-loader-bar" in attrs)
+        self.assertEqual((bar.get("role"), bar.get("aria-valuemin"), bar.get("aria-valuemax")), ("progressbar", "0", "100"))
+        self.assertEqual(sum("data-loader-skip" in attrs for _, attrs in self.nodes), 1)
+        self.assertIn("<noscript><style>.experience-loader { display: none !important; }</style></noscript>", self.html)
+        self.assertRegex(self.css, r"\.experience-loader \{ display: flex; animation: loader-failsafe 0s linear 15s forwards; \}")
+        # As on the previous site, "Explore my work" plays the journey (a guided scroll, still a
+        # plain link to the work without JavaScript) and the other ways past the opening go
+        # straight to the work.
         self.assertNotIn("intro-video", self.ids)
         self.assertNotIn("data-ambient", self.html)
         guides = [attrs for tag, attrs in self.nodes if tag == "a" and "data-guide" in attrs]
@@ -110,6 +119,22 @@ class StaticChecks(unittest.TestCase):
             self.assertEqual(attrs["href"], f"#case-{attrs['data-card']}")
             self.assertEqual(attrs["data-screen-project"], attrs["data-card"])
         self.assertIn("data-lenis-prevent", self.ids["project-dialog"][1])
+
+    def test_journey_fits_every_phone_screen(self):
+        journey = (ROOT / "css/journey.css").read_text()
+        # svh/lvh go through two variables with a 100vh fallback, for browsers before Safari 15.4
+        # and Chrome 108 (journey.js measures the small height there).
+        self.assertIn(":root { --vh-small: 100vh; --vh-large: 100vh; }", journey)
+        self.assertIn("@supports (height: 100svh) {\n  :root { --vh-small: 100svh; --vh-large: 100lvh; }\n}", journey)
+        self.assertEqual(len(re.findall(r"\d(?:svh|lvh|dvh)\b", journey)), 3)
+        # The stage fills the screen with the toolbars tucked away; what must stay in sight sits on
+        # the visible lower edge, which moves with the toolbar.
+        self.assertRegex(journey, r"\.journey-stage \{[^}]*height: var\(--stage-h, var\(--vh-large\)\);")
+        self.assertRegex(journey, r"\.journey-progress \{\s*position: fixed;[^}]*bottom: 0;")
+        self.assertRegex(journey, r"\.journey-hint \{\s*position: fixed;")
+        # Integer aspect ratios: older browsers ignore a media query with a decimal ratio.
+        self.assertNotRegex(journey, r"aspect-ratio:\s*\d+\.\d")
+        self.assertNotIn("inset: 0", journey.split("/* ---------- Thoughts")[0])
 
     def test_fullscreen_is_progressively_enhanced_not_forced(self):
         self.assertIn("fullscreen-toggle", self.ids)

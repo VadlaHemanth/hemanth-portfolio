@@ -1,6 +1,6 @@
-import { PROFILE, getProject } from "./content.js?v=20261016-v3b";
-import { initJourney } from "./js/journey/journey.js?v=20261016-v3b";
-import { initSkills } from "./skills.js?v=20261016-v3b";
+import { PROFILE, getProject } from "./content.js?v=20261017-v3c";
+import { initJourney } from "./js/journey/journey.js?v=20261017-v3c";
+import { initSkills } from "./skills.js?v=20261017-v3c";
 
 export const MOTION_STORAGE_KEY = "vh:motion";
 const MOTION_PREFERENCES = new Set(["system", "full", "reduced"]);

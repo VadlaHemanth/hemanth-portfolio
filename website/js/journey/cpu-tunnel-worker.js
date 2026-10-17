@@ -3,7 +3,7 @@
  * Lookup tables for a new canvas size are built in slices between frames, so the
  * passage keeps moving while a sharper or lighter size is prepared.
  */
-import {TunnelLut, outlineTable, shade} from "./cpu-tunnel.js?v=20261016-v3b";
+import {TunnelLut, outlineTable, shade} from "./cpu-tunnel.js?v=20261017-v3c";
 
 let texN = null;
 let texC = null;

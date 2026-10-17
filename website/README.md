@@ -32,8 +32,10 @@ journey runs forward and backward at the same pace instead of scrubbing a video.
 
 - `js/journey/timeline.js` maps scroll to one perceived camera speed. Zooms advance
   in log-scale, tunnel flight is converted into the same units, and the few
-  deliberate pace changes (a quicker dive into the eye, reading the projects, the pull-back) are blended so the
-  speed never jumps. The journey is about seven screens of scroll on every device.
+  deliberate pace changes (the eye, reading the projects, the rewind) are blended so the
+  speed never jumps. The camera dives into the eye and pulls back out of it at one pace
+  (`EYE_PACE`), a little quicker than the passage, in scrolling and in the guided
+  play-through alike. The journey is about seven screens of scroll on every device.
 - `js/journey/shaders.js` and `renderer.js` draw it with WebGL2: the eye stack
   (portrait → eye → iris → pupil), the neural passage and circuit as a polar tunnel
   with tileable textures, the processor burst as particles, then bloom, a light
@@ -60,9 +62,11 @@ journey runs forward and backward at the same pace instead of scrubbing a video.
   render scale, then drops bloom on very slow GPUs), the skip links, context loss and
   resizing. `?journey-capture` renders single deterministic frames for QA.
 - The opening copy sits left of the face on landscape screens and below it on
-  portrait screens. `css/journey.css` sets it, and the journey's other text, in the
-  same type and colours as the sections. Explore my work and Skip to work both jump
-  straight to the work; the project cards open the same case studies as Selected work.
+  portrait screens. On shorter phones the photo gets just small enough that the copy
+  stays off the face: the mouth while the photo still fills the screen's width, the eyes
+  always. `css/journey.css` sets it, and the journey's other text, in the
+  same type and colours as the sections. Skip to work jumps straight to the work; the
+  project cards open the same case studies as Selected work.
 
 Without WebGL (no GPU, blocked drivers), `js/journey/renderer2d.js` draws the same
 journey with Canvas 2D. It is loaded only on those machines:
@@ -77,6 +81,26 @@ journey with Canvas 2D. It is loaded only on those machines:
 
 Reduced motion (system setting or the header switch) or a failed load show the static
 portrait and the full portfolio instead.
+
+### Loading screen
+
+The previous site's loading screen ("A thought. A world within.") shows from the first
+paint while the journey's images load, with their real progress, the scroll directions
+and a way past it ("Skip loading", or Escape). It lifts once everything is in and ready
+to draw; once the photo itself is in, it waits at most five seconds after the page opened
+(the rest keeps arriving, shown along the header). It never traps anyone: without
+JavaScript, with reduced motion or on the static page it does not show, and if the
+scripts never arrive it steps aside by itself after 15 seconds.
+
+### Phones
+
+Phone browsers have two screen heights: with their toolbars showing (small) and tucked
+away while scrolling (large). The stage is as tall as the large one, so no gap opens
+below it; the picture is composed for the small one, so nothing important hides behind
+a toolbar; and the progress line and the "Swipe up to begin" hint sit on the screen's
+visible lower edge (`position: fixed`), so they follow the toolbar as it moves. Browsers
+without the small/large units (before Safari 15.4 and Chrome 108) fall back to `100vh`
+and a measured height.
 
 ## Media
 
@@ -106,10 +130,16 @@ npm run check
 npm test
 ```
 
-Tests cover the journey timeline (pacing continuity, framing, card layout, media
-tiers), content and link structure, the menu, case-study dialogs, disclosures and
-skills lens, the generated catalogue staying in sync with the content modules,
-cache headers, and accessible defaults.
+Tests cover the journey timeline (pacing continuity, the eye's matched pace, framing,
+card layout, media tiers), the loading screen and phone layout rules, content and link
+structure, the menu, case-study dialogs, disclosures and skills lens, the generated
+catalogue staying in sync with the content modules, cache headers, and accessible
+defaults.
+
+Phones were checked in emulation: Chromium with Android profiles and WebKit with iPhone
+and iPad profiles, each opened with the toolbar showing and then with it tucked away
+(the viewport grown to the large height), real touch swipes, throttled networks for the
+loading screen, and a 2021 Chromium and WebKit for older phones.
 
 ## Deploy
 

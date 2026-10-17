@@ -4,27 +4,37 @@
  * (smoothed by Lenis), so the journey plays forward and backward at one
  * consistent pace instead of scrubbing a video.
  */
-import Lenis from "../../vendor/lenis.js?v=20261016-v3b";
-import {createContext} from "./gl.js?v=20261016-v3b";
-import {JourneyRenderer} from "./renderer.js?v=20261016-v3b";
-import {createTimeline, zoomCamera, CHAMBER_DEPTH, smoothstep} from "./timeline.js?v=20261016-v3b";
-import {Overlays, layoutCards} from "./overlays.js?v=20261016-v3b";
-import {chooseTier, fetchAll} from "./assets.js?v=20261016-v3b";
+import Lenis from "../../vendor/lenis.js?v=20261017-v3c";
+import {createContext} from "./gl.js?v=20261017-v3c";
+import {JourneyRenderer} from "./renderer.js?v=20261017-v3c";
+import {createTimeline, zoomCamera, CHAMBER_DEPTH, smoothstep} from "./timeline.js?v=20261017-v3c";
+import {Overlays, layoutCards} from "./overlays.js?v=20261017-v3c";
+import {chooseTier, fetchAll} from "./assets.js?v=20261017-v3c";
 
 const CORE_SIZE = 0.9;
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 
+/** The screen's small and large heights (phone toolbars showing and tucked away), in CSS pixels. */
 function stableViewport() {
   const probe = document.createElement("div");
-  probe.style.cssText = "position:fixed;left:0;top:0;width:0;height:100svh;visibility:hidden;pointer-events:none";
+  probe.style.cssText = "position:fixed;left:0;top:0;width:0;visibility:hidden;pointer-events:none";
   document.body.append(probe);
-  const svh = probe.getBoundingClientRect().height || innerHeight;
-  probe.style.height = "100lvh";
-  const lvh = probe.getBoundingClientRect().height || innerHeight;
+  // A unit the browser does not know leaves the height unset, which reads as 0.
+  const read = (value) => {
+    probe.style.height = "";
+    probe.style.height = value;
+    return probe.style.height ? probe.getBoundingClientRect().height : 0;
+  };
+  // Older browsers (before Safari 15.4 and Chrome 108) have only vh, the large height on phones;
+  // there the small one is the visible height now, as the page opens with its toolbars showing.
+  const vh = read("100vh") || innerHeight;
+  const svh = read("100svh") || Math.min(innerHeight, vh);
+  const lvh = read("100lvh") || vh;
   probe.remove();
   return {width: document.documentElement.clientWidth, svh: Math.round(svh), lvh: Math.round(Math.max(lvh, svh))};
 }
+const viewportUnits = typeof CSS !== "undefined" && CSS.supports?.("height", "100svh");
 
 function affineToMat3([a, b, c, d, e, f]) {
   // uv.x = a*x + b*y + c ; uv.y = d*x + e*y + f   (column-major for GLSL)
@@ -38,6 +48,17 @@ export function initJourney() {
   if (!root || !stage || !canvas) return null;
   const html = document.documentElement;
   const loaderLine = root.querySelector("[data-j='load']");
+  const loader = document.querySelector("[data-loader]");
+  const loaderBar = loader?.querySelector("[data-loader-bar]");
+  const loaderPercent = loader?.querySelector("[data-loader-percent]");
+  const loaderStatus = loader?.querySelector("[data-loader-status]");
+  const site = document.getElementById("site-content");
+  const SOFT_WAIT = 5000;
+  const HARD_WAIT = 15000;
+  let loading = false;
+  let loadShown = -1;
+  let hardTimer = 0;
+  let softTimer = 0;
   const status = root.querySelector("[data-j='status']");
   const reducedQuery = matchMedia("(prefers-reduced-motion: reduce)");
   // Capture mode renders single deterministic frames on request (QA and screenshots).
@@ -54,6 +75,7 @@ export function initJourney() {
 
   function goStatic(reason) {
     html.classList.add("journey-static");
+    finishLoader();
     html.classList.remove("is-journey");
     root.style.removeProperty("height");
     // Whatever the journey last did to its hero copy, the static page shows it, usable.
@@ -106,18 +128,50 @@ export function initJourney() {
   let dirty = true;
   let dpr = 1;
   let headerBottom = 0;
+  let copyTop = 0;
   let tour = null;
+  // "Skip" pressed before the journey knew its length: land on the work again once it does.
+  let workIntent = false;
+
+  /** Top of the opening copy within the frame (layout position: no transforms). */
+  function measureCopyTop() {
+    let el = root.querySelector(".story-opening");
+    let y = 0;
+    while (el && el !== stage) {
+      y += el.offsetTop;
+      el = el.offsetParent;
+    }
+    return el === stage ? y : 0;
+  }
 
   function measure() {
     view = stableViewport();
-    // The fixed header's height (layout height: unaffected by any transform on scroll).
-    headerBottom = document.querySelector(".site-header")?.offsetHeight || 0;
-    if (plate) {
-      timeline = createTimeline(view.width, view.svh, plate, {top: headerBottom});
-      root.style.height = `${Math.round(timeline.scrollTotal * view.svh + view.lvh)}px`;
-    }
     stage.style.setProperty("--stage-h", `${view.lvh}px`);
     stage.style.setProperty("--frame-h", `${view.svh}px`);
+    if (!viewportUnits) {
+      // Without svh/lvh the page's own heights come from the measurement too.
+      html.style.setProperty("--vh-small", `${view.svh}px`);
+      html.style.setProperty("--vh-large", `${view.lvh}px`);
+    }
+    // The fixed header's height (layout height: unaffected by any transform on scroll).
+    headerBottom = document.querySelector(".site-header")?.offsetHeight || 0;
+    copyTop = measureCopyTop();
+    if (plate) {
+      timeline = createTimeline(view.width, view.svh, plate, {top: headerBottom, copyTop});
+      // A visitor already past the journey (skipped while it loaded, or a restored position)
+      // keeps reading the same place while the journey's length changes above them.
+      const before = root.offsetHeight;
+      const past = root.getBoundingClientRect().bottom <= 1;
+      root.style.height = `${Math.round(timeline.scrollTotal * view.svh + view.lvh)}px`;
+      const grown = root.offsetHeight - before;
+      if (workIntent) {
+        workIntent = false;
+        skipToWork();
+      } else if (past && grown) {
+        lenis.resize();
+        lenis.scrollTo(window.scrollY + grown, {immediate: true, force: true});
+      }
+    }
     sectionTop = root.getBoundingClientRect().top + window.scrollY;
     if (cpu) {
       dpr = Math.min(window.devicePixelRatio || 1, 1.5);
@@ -209,7 +263,7 @@ export function initJourney() {
       // A slow breath while the visitor rests on the portrait (fades out as the dive begins).
       const rest = cpu ? 0 : Math.max(state.hero, state.final) * (1 - smoothstep(0, 0.2, state.zoomLog));
       const breath = rest * 0.0045 * Math.sin(time * (Math.PI * 2 / 5.5));
-      const cam = zoomCamera(state.zoomLog + breath, width, svh, plate, timeline.zoomLen, headerBottom);
+      const cam = zoomCamera(state.zoomLog + breath, width, svh, plate, timeline.zoomLen, headerBottom, copyTop);
       const pupilR = plate.pupilRadius * (1 + 0.55 * state.dilation) * cam.sigma;
       windowCircle = [cam.pupil[0], cam.pupil[1], state.window > 0 ? pupilR * smoothstep(0, 1, state.window * 1.4) : 0];
       frameCenter[0] = cam.pupil[0];
@@ -391,6 +445,81 @@ export function initJourney() {
     html.classList.toggle("is-journey", on);
   }
 
+  // Loading screen (the previous site's): it stays until the journey's images are in and ready to
+  // draw, so the first scroll is complete and smooth. Once the photo itself is in it waits at most
+  // until SOFT_WAIT after the page opened (the rest keeps arriving, shown along the header), and
+  // never past HARD_WAIT, when its CSS fallback also lets go.
+  function startLoader() {
+    if (!loader || capture || getComputedStyle(loader).display === "none" || getComputedStyle(loader).visibility === "hidden") {
+      finishLoader();
+      return;
+    }
+    loading = true;
+    html.classList.add("is-loading");
+    lenis.stop();
+    // The page behind waits; the skip button is the first stop for the keyboard (no focus ring
+    // forced on everyone else).
+    if (site) site.inert = true;
+    hardTimer = setTimeout(finishLoader, Math.max(0, HARD_WAIT - performance.now()));
+    softTimer = setTimeout(() => {
+      if (ready) finishLoader();
+    }, Math.max(0, SOFT_WAIT - performance.now()));
+  }
+  function setLoad(p) {
+    loaderLine?.style.setProperty("--load", p.toFixed(4));
+    if (!loading) return;
+    loaderBar?.style.setProperty("--load", p.toFixed(4));
+    const percent = Math.floor(p * 100);
+    if (percent === loadShown) return;
+    loadShown = percent;
+    if (loaderPercent) loaderPercent.textContent = `${percent}%`;
+    loaderBar?.setAttribute("aria-valuenow", String(percent));
+  }
+  function finishLoader() {
+    clearTimeout(hardTimer);
+    clearTimeout(softTimer);
+    const wasLoading = loading;
+    loading = false;
+    html.classList.remove("is-loading");
+    if (!wasLoading) {
+      html.classList.add("loader-done");
+      return;
+    }
+    html.classList.add("loader-leaving");
+    setTimeout(() => html.classList.add("loader-done"), 650);
+    if (site) site.inert = false;
+    if (loader.contains(document.activeElement)) document.getElementById("main")?.focus({preventScroll: true});
+    lenis.start();
+    // The face lights up as the screen lifts.
+    introStart = -1;
+    if (ready) root.classList.add("is-ready");
+  }
+  function skipToWork() {
+    stopTour();
+    const work = document.getElementById("work");
+    if (!work) return;
+    if (!timeline) workIntent = true;
+    // The page may have just grown (the journey sized itself): scroll with fresh limits.
+    lenis.resize();
+    lenis.scrollTo(work, {immediate: true, force: true});
+    work.setAttribute("tabindex", "-1");
+    work.focus({preventScroll: true});
+  }
+  loader?.querySelector("[data-loader-skip]")?.addEventListener("click", () => {
+    finishLoader();
+    skipToWork();
+  });
+  window.addEventListener("keydown", (event) => {
+    if (!loading || event.key !== "Escape") return;
+    event.preventDefault();
+    finishLoader();
+    skipToWork();
+  });
+  // Nothing scrolls behind the screen (older iPhones ignore overflow: hidden for touch).
+  loader?.addEventListener("touchmove", (event) => {
+    if (loading && loader.scrollHeight <= loader.clientHeight + 1) event.preventDefault();
+  }, {passive: false});
+
   // First-visit hint: a quiet "scroll down" prompt on the opening frame, gone for good once the
   // visitor moves (scroll, a skip link or the guide).
   const scrolled = () => {
@@ -405,7 +534,7 @@ export function initJourney() {
   // did, at one uniform camera speed: it advances in the timeline's visual units, so the dive, the
   // passage, the projects and the pull-back all move alike. It ends on the closing portrait, and
   // any input hands control back.
-  const GUIDE_SPEED = 2.75; // visual units per second (the dive into the eye a little quicker)
+  const GUIDE_SPEED = 2.75; // visual units per second (the eye at its own pace: EYE_PACE)
   function startTour() {
     const from = timeline.guideTimeAt(timeline.visualAt(clamp(scrollVh(lenis.scroll), 0, timeline.scrollTotal)));
     const to = timeline.guideTimeAt(timeline.visualTotal);
@@ -435,7 +564,9 @@ export function initJourney() {
   }
   for (const type of ["wheel", "touchstart", "pointerdown", "keydown"]) {
     window.addEventListener(type, (event) => {
-      if (type === "pointerdown" && event.target.closest?.("[data-guide]")) return;
+      if (type === "pointerdown" && event.target.closest?.("[data-guide], [data-skip], [data-loader-skip]")) return;
+      // The visitor's own scrolling overrides a pending skip.
+      if (type === "wheel" || type === "touchstart" || /^(Arrow|Page|Home|End| )/.test(event.key || "")) workIntent = false;
       stopTour();
     }, {passive: true});
   }
@@ -446,12 +577,7 @@ export function initJourney() {
   }));
   document.querySelectorAll("a[href='#work'][data-skip]").forEach((a) => a.addEventListener("click", (event) => {
     event.preventDefault();
-    stopTour();
-    const work = document.getElementById("work");
-    if (!work) return;
-    lenis.scrollTo(work, {immediate: true, force: true});
-    work.setAttribute("tabindex", "-1");
-    work.focus({preventScroll: true});
+    skipToWork();
   }));
 
   async function load() {
@@ -477,7 +603,7 @@ export function initJourney() {
       const cores = navigator.hardwareConcurrency || 2;
       if (cpu) {
         // Only machines without WebGL download the CPU renderer.
-        const {CpuRenderer} = await import("./renderer2d.js?v=20261016-v3b");
+        const {CpuRenderer} = await import("./renderer2d.js?v=20261017-v3c");
         renderer = new CpuRenderer(cpu, {workers: cores >= 4 ? 2 : cores >= 2 ? 1 : 0});
       } else renderer = new JourneyRenderer(context, {shardCount: coarse ? 700 : 1400});
       planes = planeUniforms(tier);
@@ -485,8 +611,10 @@ export function initJourney() {
       const repeat = {neural: true, circuit: true};
       let heroShown = false;
       loop.files = files;
+      // The last few percent are the renderer getting ready to draw (the CPU's lookup tables).
+      const share = cpu ? 0.94 : 1;
       await fetchAll(files, {
-        onProgress: (p) => loaderLine?.style.setProperty("--load", p.toFixed(4)),
+        onProgress: (p) => setLoad(p * share),
         onFile: (key, bitmap) => {
           renderer.setTexture(key, bitmap, {repeat: !!repeat[key]});
           // Decoded images are freed as soon as the renderer has its own copy.
@@ -495,13 +623,22 @@ export function initJourney() {
           if ((key === "L0o" || (key === "L0" && !tier.L0o)) && !heroShown) {
             heroShown = true;
             ready = true;
-            root.classList.add("is-ready");
+            if (!loading) root.classList.add("is-ready");
+            else if (performance.now() >= SOFT_WAIT) finishLoader();
           }
         },
       });
       root.classList.add("is-loaded");
       renderer.prepare?.(buildFrame(timeline.stateAt(0), 0).plates);
       dirty = true;
+      if (loading && renderer.warmed) {
+        if (loaderStatus) loaderStatus.textContent = "Preparing smooth scrolling.";
+        const until = performance.now() + 4000;
+        while (loading && !renderer.warmed() && performance.now() < until) await new Promise((r) => setTimeout(r, 100));
+      }
+      setLoad(1);
+      // Let the meter reach the end before the screen lifts.
+      if (loading) setTimeout(finishLoader, 300);
       if (status) status.textContent = "";
     } catch (error) {
       console.warn("[journey]", error);
@@ -577,8 +714,9 @@ export function initJourney() {
   if (loop.journey) {
     html.classList.add("is-journey");
     measure();
+    startLoader();
     load();
-  }
+  } else finishLoader();
   requestAnimationFrame(frame);
   if (capture) {
     window.__journey = {

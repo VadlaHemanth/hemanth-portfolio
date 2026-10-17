@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {createTimeline, heroFraming, zoomCamera, CHAMBER_DEPTH, CORE_DEPTH} from "../js/journey/timeline.js";
+import {createTimeline, heroFraming, zoomCamera, CHAMBER_DEPTH, CORE_DEPTH, EYE_PACE} from "../js/journey/timeline.js";
 import {layoutCards, CARD_ORDER} from "../js/journey/overlays.js";
 import {chooseTier} from "../js/journey/assets.js";
 
@@ -164,5 +164,47 @@ test("the guided play-through can move at one uniform camera speed (visual posit
     }
     assert.ok(worst < 1e-6, `${w}x${h}: round trip within ${worst}`);
     assert.ok(Math.abs(tl.scrollAtVisual(tl.visualTotal) - tl.scrollTotal) < 1e-9, "the guide ends exactly at the journey's end");
+  }
+});
+
+test("the camera dives into the eye at the same pace it pulls back out, scrolling and guided", () => {
+  for (const [w, h] of [...VIEWPORTS, [2220, 952]]) {
+    const tl = createTimeline(w, h, plate, {top: 88});
+    const dive = tl.chapters.find((c) => c.phase === "forward" && c.id === "zoom");
+    const back = tl.chapters.find((c) => c.phase === "twist" && c.id === "zoom");
+    const e = 1e-3;
+    const scrollPace = (v) => (2 * e) / (tl.scrollAtVisual(v + e) - tl.scrollAtVisual(v - e));
+    const guidePace = (v) => (2 * e) / (tl.guideTimeAt(v + e) - tl.guideTimeAt(v - e));
+    const passage = scrollPace(tl.chapters.find((c) => c.phase === "forward" && c.id === "mind").start + 2);
+    // From the face (once the pull-back has left its resting ease) to the opening pupil.
+    for (let x = 0.3; x <= 0.8 + 1e-9; x += 0.05) {
+      const vIn = dive.start + x * dive.len;
+      const vOut = back.start + back.len - x * back.len;
+      assert.ok(Math.abs(scrollPace(vIn) / scrollPace(vOut) - 1) < 0.02, `${w}x${h} at ${x.toFixed(2)}: scroll pace in/out`);
+      assert.ok(Math.abs(guidePace(vIn) / guidePace(vOut) - 1) < 0.02, `${w}x${h} at ${x.toFixed(2)}: guided pace in/out`);
+      assert.ok(Math.abs(scrollPace(vIn) / passage - EYE_PACE) < 0.02, `${w}x${h}: the eye moves at EYE_PACE`);
+    }
+    // The dive starts at that pace: the first scroll already moves the face.
+    assert.ok(Math.abs(scrollPace(dive.start + 0.02) / passage - EYE_PACE) < 0.02, `${w}x${h}: first scroll`);
+  }
+});
+
+test("on phones the opening copy stays off the face: the eyes always, the mouth where the photo can shrink", () => {
+  // [width, height (toolbars showing), top of the copy as laid out there]
+  for (const [w, h, copy] of [[375, 553, 241], [360, 560, 253], [320, 492, 205], [390, 664, 353], [412, 811, 490], [430, 740, 430]]) {
+    const top = 73;
+    const free = heroFraming(w, h, plate, top);
+    const hero = heroFraming(w, h, plate, top, copy);
+    const y = (py) => hero.face[1] + (py - plate.face[1]) * hero.sigma;
+    const limit = copy - Math.max(12, h * 0.02);
+    assert.ok(y(plate.hairTop) >= top + 12 - 1e-6, `${w}x${h}: the crown clears the header`);
+    assert.ok(y(plate.pupil[1] + plate.irisRadius) <= limit + 1e-6, `${w}x${h}: the eyes clear the copy`);
+    assert.ok(hero.sigma <= free.sigma + 1e-9, `${w}x${h}: never larger than before`);
+    // The mouth is given up only to keep the photo as wide as the screen, and the photo gets
+    // narrower than the screen only to keep the eyes clear.
+    if (y(plate.lip) > limit + 1e-6) assert.ok(hero.sigma >= w / plate.width - 1e-9 || Math.abs(y(plate.pupil[1] + plate.irisRadius) - limit) < 1e-6, `${w}x${h}: mouth`);
+    if (hero.sigma < w / plate.width - 1e-9) assert.ok(Math.abs(y(plate.pupil[1] + plate.irisRadius) - limit) < 1e-6, `${w}x${h}: narrower only for the eyes`);
+    // Where the face already fits, nothing changes.
+    if (free.face[1] + (plate.lip - plate.face[1]) * free.sigma <= copy - Math.max(12, h * 0.02)) assert.deepEqual(hero, free);
   }
 });
