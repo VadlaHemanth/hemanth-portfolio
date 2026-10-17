@@ -409,16 +409,19 @@ html.is-journey:has(.journey[data-renderer="cpu"]) .site-header { backdrop-filte
 .experience-loader {
   position: fixed; z-index: 120; top: 0; left: 0; right: 0; bottom: 0;
   display: none; overflow-y: auto; overscroll-behavior: contain;
-  padding: 2rem; background: #050608; color: var(--text);
+  /* 99% opaque: Safari 26 clips fully opaque full-screen overlays at its floating toolbar. */
+  padding: 2rem; background: rgb(5 6 8 / .99); color: var(--text);
 }
 @supports (aspect-ratio: 1) {
   .experience-loader { display: flex; animation: loader-failsafe 0s linear 15s forwards; }
 }
-@keyframes loader-failsafe { to { visibility: hidden; } }
+@keyframes loader-failsafe { to { visibility: hidden; display: none; } }
 html.journey-static .experience-loader, html.loader-done .experience-loader { display: none; }
 html.loader-leaving .experience-loader { opacity: 0; visibility: hidden; transition: opacity .6s var(--ease), visibility 0s .6s; }
 html.is-loading, html.is-loading body { overflow: hidden; }
-.loader-inner { width: min(100%, 480px); margin: auto; }
+/* The words come in after a moment, so a quick (cached) load never flashes them. */
+.loader-inner { width: min(100%, 480px); margin: auto; animation: loader-in .5s var(--ease) .35s both; }
+@keyframes loader-in { from { opacity: 0; transform: translateY(8px); } }
 .loader-logo { width: 65px; height: auto; color: #168bff; margin-bottom: 3rem; }
 .loader-inner .eyebrow { color: #9aaabd; font-size: .58rem; }
 .loader-inner h2 { font-size: clamp(2.8rem, 8vw, 4.8rem); line-height: 1.05; letter-spacing: -.055em; margin: 1rem 0 2rem; }
@@ -451,6 +454,7 @@ html.is-loading, html.is-loading body { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   html:not([data-motion="full"]) .experience-loader { display: none; }
   .loader-bar > span { transition: none; }
+  .loader-inner { animation: none; }
 }
 @media (forced-colors: active) { .loader-bar > span { background: Highlight; } }
 @media print { .experience-loader { display: none !important; } }

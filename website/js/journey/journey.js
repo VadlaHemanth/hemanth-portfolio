@@ -637,8 +637,8 @@ export function initJourney() {
         while (loading && !renderer.warmed() && performance.now() < until) await new Promise((r) => setTimeout(r, 100));
       }
       setLoad(1);
-      // Let the meter reach the end before the screen lifts.
-      if (loading) setTimeout(finishLoader, 300);
+      // Let the meter reach the end before the screen lifts (not worth a wait on a quick load).
+      if (loading) setTimeout(finishLoader, performance.now() < 1200 ? 0 : 300);
       if (status) status.textContent = "";
     } catch (error) {
       console.warn("[journey]", error);
