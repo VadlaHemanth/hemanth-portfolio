@@ -405,10 +405,10 @@ export function initJourney() {
   // did, at one uniform camera speed: it advances in the timeline's visual units, so the dive, the
   // passage, the projects and the pull-back all move alike. It ends on the closing portrait, and
   // any input hands control back.
-  const GUIDE_SPEED = 2.75; // visual units per second (the whole journey in about 13.5 s)
+  const GUIDE_SPEED = 2.75; // visual units per second (the dive into the eye a little quicker)
   function startTour() {
-    const from = timeline.visualAt(clamp(scrollVh(lenis.scroll), 0, timeline.scrollTotal));
-    const to = timeline.visualTotal;
+    const from = timeline.guideTimeAt(timeline.visualAt(clamp(scrollVh(lenis.scroll), 0, timeline.scrollTotal)));
+    const to = timeline.guideTimeAt(timeline.visualTotal);
     if (to - from < 0.05) return false;
     tour = {from, to, elapsed: 0, last: performance.now(), duration: ((to - from) / GUIDE_SPEED) * 1000};
     html.classList.add("is-touring");
@@ -429,7 +429,7 @@ export function initJourney() {
     // Ease in and out over about a third of a second; constant speed in between.
     const ramp = Math.min(0.06, 350 / tour.duration);
     const e = t < ramp ? (t * t) / (2 * ramp * (1 - ramp)) : t > 1 - ramp ? 1 - ((1 - t) ** 2) / (2 * ramp * (1 - ramp)) : (t - ramp / 2) / (1 - ramp);
-    const visual = lerp(tour.from, tour.to, e);
+    const visual = timeline.visualAtGuideTime(lerp(tour.from, tour.to, e));
     lenis.scrollTo(sectionTop + timeline.scrollAtVisual(visual) * view.svh, {immediate: true, force: true});
     if (t >= 1) stopTour();
   }

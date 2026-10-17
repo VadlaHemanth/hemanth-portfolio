@@ -56,6 +56,16 @@ export const THOUGHTS = Object.freeze([
 const THOUGHT_WINDOW = 0.075;
 
 /**
+ * The dive into the eye: quicker while the face and the eye grow (the eye's broad, smooth
+ * surfaces read slower on screen than the passage), easing back to the common pace as the
+ * pupil opens, so the opening and everything after it keep their timing.
+ */
+export const DIVE_PACE = 1.45;
+export function divePace(t) {
+  return 1 + (DIVE_PACE - 1) * (1 - smoothstep(0.5, 0.78, t));
+}
+
+/**
  * Where the portrait sits for a viewport, in CSS pixels.
  * plate: {width, height, face:[x,y], pupil:[x,y], pupilRadius, irisRadius, hero?, hairTop?}
  * top: the bottom of the fixed header; the crown of the hair always stays clear of it.
@@ -109,6 +119,10 @@ export function zoomCamera(zoomLog, width, height, plate, length, top = 0) {
   return {sigma, pupil};
 }
 
+function diveFactor(chapter, v) {
+  return chapter.phase === "forward" && chapter.id === "zoom" ? divePace((v - chapter.start) / chapter.len) : 1;
+}
+
 function chapterList(zoomLen) {
   // phase: forward → show → twist → settle. speed is visual units per unit of base scroll.
   const forward = [
@@ -154,7 +168,7 @@ export function createTimeline(width, height, plate, {top = 0} = {}) {
   for (let i = 0; i < N; i++) {
     const v = i * dv;
     while (k < chapters.length - 1 && v >= chapters[k].start + chapters[k].len) k++;
-    raw[i] = chapters[k].speed;
+    raw[i] = chapters[k].speed * diveFactor(chapters[k], v);
   }
   // Ease out of the final settle so the camera arrives at rest on the portrait.
   const settle = chapters.at(-1);
@@ -200,6 +214,32 @@ export function createTimeline(width, height, plate, {top = 0} = {}) {
     return (lo + (span > 0 ? (s - scrollAt[lo]) / span : 0)) * dv;
   }
 
+  // Guide time (in visual units at the guide's base speed): uniform, with the same quicker dive.
+  const guideAt = new Float64Array(N);
+  for (let i = 1; i < N; i++) {
+    const v = (i - 0.5) * dv;
+    const chapter = chapters.find((c) => v < c.start + c.len) || chapters.at(-1);
+    guideAt[i] = guideAt[i - 1] + dv / diveFactor(chapter, v);
+  }
+  /** Guide time of a visual position, and its inverse. */
+  function guideTimeAt(visual) {
+    const x = clamp(visual / dv, 0, N - 1);
+    const i = Math.min(N - 2, Math.floor(x));
+    return guideAt[i] + (guideAt[i + 1] - guideAt[i]) * (x - i);
+  }
+  function visualAtGuideTime(time) {
+    const g = clamp(time, 0, guideAt[N - 1]);
+    let lo = 0;
+    let hi = N - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (guideAt[mid] <= g) lo = mid;
+      else hi = mid;
+    }
+    const span = guideAt[hi] - guideAt[lo];
+    return (lo + (span > 0 ? (g - guideAt[lo]) / span : 0)) * dv;
+  }
+
   /** Inverse of visualAt: the scroll position (viewport heights) of a visual position. */
   function scrollAtVisual(visual) {
     const x = clamp(visual / dv, 0, N - 1);
@@ -223,7 +263,7 @@ export function createTimeline(width, height, plate, {top = 0} = {}) {
     return chapterState(chapter, t, ctx, v / visualTotal);
   }
 
-  return {scrollTotal, visualTotal, zoomLen, chapters, stateAt, visualAt, scrollAtVisual};
+  return {scrollTotal, visualTotal, zoomLen, chapters, stateAt, visualAt, scrollAtVisual, guideTimeAt, visualAtGuideTime};
 }
 
 function baseState() {

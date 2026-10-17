@@ -32,7 +32,7 @@ journey runs forward and backward at the same pace instead of scrubbing a video.
 
 - `js/journey/timeline.js` maps scroll to one perceived camera speed. Zooms advance
   in log-scale, tunnel flight is converted into the same units, and the few
-  deliberate pace changes (reading the projects, the pull-back) are blended so the
+  deliberate pace changes (a quicker dive into the eye, reading the projects, the pull-back) are blended so the
   speed never jumps. The journey is about seven screens of scroll on every device.
 - `js/journey/shaders.js` and `renderer.js` draw it with WebGL2: the eye stack
   (portrait → eye → iris → pupil), the neural passage and circuit as a polar tunnel
