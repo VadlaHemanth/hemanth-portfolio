@@ -93,8 +93,15 @@ class StaticChecks(unittest.TestCase):
         bar = next(attrs for _, attrs in self.nodes if "data-loader-bar" in attrs)
         self.assertEqual((bar.get("role"), bar.get("aria-valuemin"), bar.get("aria-valuemax")), ("progressbar", "0", "100"))
         self.assertEqual(sum("data-loader-skip" in attrs for _, attrs in self.nodes), 1)
-        self.assertIn("<noscript><style>.experience-loader { display: none !important; }</style></noscript>", self.html)
+        self.assertIn("<noscript><style>.experience-loader { display: none !important; } .journey-poster { display: block !important; visibility: visible !important; }</style></noscript>", self.html)
         self.assertRegex(self.css, r"\.experience-loader \{ display: flex; animation: loader-failsafe 0s linear 15s forwards; \}")
+        # Only the first arrival shows it: coming back to a place on the page (the resume page's
+        # "Back to portfolio" goes to #top) skips it before the first paint, and journey.js skips
+        # it for the rest of the visit.
+        self.assertIn("html:has(:target) .experience-loader { display: none; }", self.css)
+        resume = (ROOT / "resume.html").read_text()
+        self.assertIn('<a class="back-link" href="./#top">', resume)
+        self.assertIn('storage()?.getItem(SEEN_KEY) === "1"', (ROOT / "js/journey/journey.js").read_text())
         # As on the previous site, "Explore my work" plays the journey (a guided scroll, still a
         # plain link to the work without JavaScript) and the other ways past the opening go
         # straight to the work.

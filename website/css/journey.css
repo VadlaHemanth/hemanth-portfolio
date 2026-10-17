@@ -56,6 +56,13 @@
 
 [data-hidden] { visibility: hidden; }
 html.js:not(.journey-static) .journey-poster { display: none; }
+/* Browsers that can run the journey don't paint the static photo first either: a moment later it
+   would give way to the journey's own framing of it. Without scripts it shows as before, and if
+   the scripts never arrive it comes back with the loading screen's fallback. */
+@supports (aspect-ratio: 1) {
+  html:not(.journey-static) .journey-poster { visibility: hidden; animation: poster-failsafe 0s linear 15s forwards; }
+}
+@keyframes poster-failsafe { to { visibility: visible; } }
 
 /* ---------- Hero: the opening copy, set to the left of the face ---------- */
 .journey-hero {
@@ -417,10 +424,12 @@ html.is-journey:has(.journey[data-renderer="cpu"]) .site-header { backdrop-filte
 }
 @keyframes loader-failsafe { to { visibility: hidden; display: none; } }
 html.journey-static .experience-loader, html.loader-done .experience-loader { display: none; }
+/* Arriving at a place on the page (Back to portfolio, a link to a section) skips it outright. */
+html:has(:target) .experience-loader { display: none; }
 html.loader-leaving .experience-loader { opacity: 0; visibility: hidden; transition: opacity .6s var(--ease), visibility 0s .6s; }
 html.is-loading, html.is-loading body { overflow: hidden; }
 /* The words come in after a moment, so a quick (cached) load never flashes them. */
-.loader-inner { width: min(100%, 480px); margin: auto; animation: loader-in .5s var(--ease) .35s both; }
+.loader-inner { width: min(100%, 480px); margin: auto; animation: loader-in .5s var(--ease) .5s both; }
 @keyframes loader-in { from { opacity: 0; transform: translateY(8px); } }
 .loader-logo { width: 65px; height: auto; color: #168bff; margin-bottom: 3rem; }
 .loader-inner .eyebrow { color: #9aaabd; font-size: .58rem; }

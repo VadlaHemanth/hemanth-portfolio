@@ -57,6 +57,17 @@ export function initJourney() {
   const HARD_WAIT = 15000;
   let loading = false;
   let loadShown = -1;
+  // The loading screen belongs to the first arrival: coming back in the same tab (from the
+  // resume page, Back, a reload) the images are already in the browser's cache.
+  const SEEN_KEY = "vh:loaded";
+  const storage = () => {
+    try {
+      return window.sessionStorage;
+    } catch {
+      return null;
+    }
+  };
+  const seenLoader = storage()?.getItem(SEEN_KEY) === "1";
   let hardTimer = 0;
   let softTimer = 0;
   const status = root.querySelector("[data-j='status']");
@@ -479,7 +490,7 @@ export function initJourney() {
   // until SOFT_WAIT after the page opened (the rest keeps arriving, shown along the header), and
   // never past HARD_WAIT, when its CSS fallback also lets go.
   function startLoader() {
-    if (!loader || capture || pending?.element || getComputedStyle(loader).display === "none" || getComputedStyle(loader).visibility === "hidden") {
+    if (!loader || capture || seenLoader || pending?.element || getComputedStyle(loader).display === "none" || getComputedStyle(loader).visibility === "hidden") {
       finishLoader();
       return;
     }
@@ -507,6 +518,11 @@ export function initJourney() {
   function finishLoader() {
     clearTimeout(hardTimer);
     clearTimeout(softTimer);
+    try {
+      storage()?.setItem(SEEN_KEY, "1");
+    } catch {
+      // Private modes may refuse storage; the screen then shows on each arrival.
+    }
     const wasLoading = loading;
     loading = false;
     html.classList.remove("is-loading");
